@@ -1,3 +1,0 @@
-dm_control
-dm_robotics-transformations
-mujoco

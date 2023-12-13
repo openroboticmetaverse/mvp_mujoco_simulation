@@ -1,151 +1,160 @@
-"""Differential inverse kinematics.
+"""Differential inverse kinematics for the UR5e.
 
-Move the mocap body (red square) position and orientation (right and left click
-respectively) and watch the UR5e end-effector track its position and orientation.
-
-Prerequisites:
-
-    pip install mujoco dm_control dm_robotics-transformations
-
-Usage:
-
-    mjpython diffik.py (macOS)
-    python diffik.py (Linux)
+Move the mocap body (red square) with your mouse (left click to rotate, right click to
+translate) and watch the UR5e end-effector track its position and orientation.
 """
 
 import mujoco
 import numpy as np
 import mujoco.viewer
 import time
-from dm_control import mjcf
-from pathlib import Path
-from typing import Optional
-from dm_robotics.transformations import transformations as tr
 
-# Type annotations.
-MjcfElement = mjcf.element._ElementImpl
 
-_HERE = Path(__file__).parent
+def jacobian(
+    model: mujoco.MjModel, data: mujoco.MjData, site_id: int, dof_ids: np.ndarray
+) -> np.ndarray:
+    jac = np.zeros((6, model.nv))
+    mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
+    return jac[:, dof_ids]
 
-# Constants.
-# XML_PATH = _HERE / "universal_robots_ur5e" / "scene.xml"
-XML_PATH = _HERE / "kuka_iiwa_14" / "scene.xml"
-DAMPING = 1e-4
-INTEGRATION_TIME = 1.0
+
+def spatial_velocity(
+    pos: np.ndarray,
+    pos_des: np.ndarray,
+    quat: np.ndarray,
+    quat_des: np.ndarray,
+    dt: float,
+) -> np.ndarray:
+    # Angular velocity.
+    quat_conj = np.zeros(4)
+    mujoco.mju_negQuat(quat_conj, quat)
+    error_quat = np.zeros(4)
+    mujoco.mju_mulQuat(error_quat, quat_des, quat_conj)
+    dw = np.zeros(3)
+    mujoco.mju_quat2Vel(dw, error_quat, 1.0)
+
+    # Linear velocity.
+    dx = pos_des - pos
+
+    return np.concatenate([dx, dw], axis=0) / dt
 
 
 def diff_ik(
-    physics: mjcf.Physics,
-    site: MjcfElement,
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    site_id: int,
     dof_ids: np.ndarray,
-    pos: Optional[np.ndarray] = None,
-    ori: Optional[np.ndarray] = None,
+    pos: np.ndarray,
+    ori: np.ndarray,
+    control_dt: float,
     damping: float = 0.0,
 ) -> np.ndarray:
-    """Computes a joint velocity that will realize the desired end-effector pose.
+    # We only get access to xmat for sites, so we need to convert it to a quaternion.
+    # Note: mju_mat2Quat returns a unit quaternion so no need to normalize.
+    quat = np.zeros(4)
+    mujoco.mju_mat2Quat(quat, data.site(site_id).xmat)
 
-    Args:
-        physics: The physics object.
-        site: The end-effector site of the robot. If using a Menagerie robot, this will
-            usually be a site called `attachment_site`.
-        dof_ids: The dof ids of the joints to control.
-        pos: The desired position of the site in world frame. If not specified, uses
-            the current position of the site.
-        ori: The desired orientation of the site in world frame. If not specified, uses
-            the current orientation of the site.
-        damping: Regularization term for the damped least squares solver.
-    """
-    if pos is None:
-        x_des = physics.bind(site).xpos.copy()
-    else:
-        x_des = np.asarray(pos)
-    if ori is None:
-        xmat = physics.bind(site).xmat.copy()
-        quat_des = tr.mat_to_quat(xmat.reshape((3, 3)))
-    else:
-        ori = np.asarray(ori)
-        if ori.shape == (3, 3):
-            quat_des = tr.mat_to_quat(ori)
-        else:
-            quat_des = ori
-
-    # Compute Jacobian of the eef site in world frame.
-    J_v = np.zeros((3, len(dof_ids)), dtype=np.float64)
-    J_w = np.zeros((3, len(dof_ids)), dtype=np.float64)
-    mujoco.mj_jacSite(
-        physics.model.ptr,
-        physics.data.ptr,
-        J_v,
-        J_w,
-        physics.bind(site).element_id,
+    twist = spatial_velocity(
+        pos=data.site(site_id).xpos,
+        pos_des=pos,
+        quat=quat,
+        quat_des=ori,
+        dt=control_dt,
     )
-    J_v = J_v[:, dof_ids]
-    J_w = J_w[:, dof_ids]
-    J = np.concatenate([J_v, J_w], axis=0)
 
-    # Translation error.
-    dx = x_des - physics.bind(site).xpos.copy()
+    jac = jacobian(model, data, site_id, dof_ids)
 
-    # Orientation error.
-    quat = tr.mat_to_quat(physics.bind(site).xmat.copy().reshape((3, 3)))
-    err_quat = tr.quat_diff_active(quat, quat_des)
-    dw = tr.quat_to_axisangle(err_quat)
-
-    # Compute end-effector velocity using damped least squares.
-    twist = np.concatenate([dx, dw], axis=0)
+    # Damped least-squares.
     if damping > 0.0:
-        hess_approx = J.T @ J + np.eye(J.shape[1]) * damping
-        jac_pinv = np.linalg.solve(hess_approx, J.T)
-        return jac_pinv @ twist
-    else:
-        return np.linalg.lstsq(J, twist, rcond=None)[0]
+        # v = (J^T * J + lambda * I)^+ * J^T * V.
+        return np.linalg.solve(
+            jac.T @ jac + np.eye(jac.shape[1]) * damping,
+            jac.T @ twist,
+        )
+    # Pseudoinverse: v = J^+ * V.
+    return np.linalg.lstsq(jac, twist, rcond=None)[0]
 
 
 def main() -> None:
-    mjcf_root = mjcf.from_path(XML_PATH.as_posix())
+    # Load the model and data.
+    model = mujoco.MjModel.from_xml_path("universal_robots_ur5e/scene.xml")
+    data = mujoco.MjData(model)
+    dt = model.opt.timestep
 
-    physics = mjcf.Physics.from_mjcf_model(mjcf_root)
-    physics.legacy_step = False
+    # Control parameters.
+    control_dt = 5 * dt  # Control timestep (seconds).
+    damping = 1e-4  # Damping term for the pseudoinverse (unitless).
 
-    jnts = mjcf_root.find_all("joint")
-    dof_ids = np.array(physics.bind(jnts).dofadr)
-    eef_site = mjcf_root.find("site", "attachment_site")
-    jnt_range = physics.bind(jnts).range.copy()
+    # Compute the number of simulation steps needed per control step.
+    n_steps = int(round(control_dt / dt))
 
-    with mujoco.viewer.launch_passive(
-        physics.model.ptr,
-        physics.data.ptr,
-        show_left_ui=False,
-        show_right_ui=False,
-    ) as viewer:
-        physics.reset(0)
+    # End-effector site we wish to control.
+    site_name = "attachment_site"
+    site_id = model.site(site_name).id
+
+    # Joint names we wish to control.
+    joint_names = [
+        "shoulder_pan_joint",
+        "shoulder_lift_joint",
+        "elbow_joint",
+        "wrist_1_joint",
+        "wrist_2_joint",
+        "wrist_3_joint",
+    ]
+    dof_ids = np.array([model.joint(name).id for name in joint_names])
+
+    # Joint limits.
+    jnt_limits = model.jnt_range.copy()
+
+    # Actuator names we wish to control.
+    actuator_names = [
+        "shoulder_pan",
+        "shoulder_lift",
+        "elbow",
+        "wrist_1",
+        "wrist_2",
+        "wrist_3",
+    ]
+    actuator_ids = np.array([model.actuator(name).id for name in actuator_names])
+
+    # Initial joint configuration saved as a keyframe in the XML file.
+    key_name = "home"
+    key_id = model.key(key_name).id
+
+    # Mocap body we will control with our mouse.
+    mocap_name = "target"
+    mocap_id = model.body(mocap_name).mocapid[0]
+
+    # Reset the simulation to the initial joint configuration.
+    mujoco.mj_resetDataKeyframe(model, data, key_id)
+
+    with mujoco.viewer.launch_passive(model, data) as viewer:
         while viewer.is_running():
             step_start = time.time()
 
-            pos_des = physics.data.mocap_pos[0].copy()
-            quat_des = physics.data.mocap_quat[0].copy()
-
-            # Compute spatial velocity.
+            # Compute joint velocities needed to realize the desired spatial velocity.
             dq = diff_ik(
-                physics=physics,
-                site=eef_site,
+                model=model,
+                data=data,
+                site_id=site_id,
                 dof_ids=dof_ids,
-                pos=pos_des,
-                ori=quat_des,
-                damping=DAMPING,
+                control_dt=control_dt,
+                damping=damping,
+                pos=data.mocap_pos[mocap_id],
+                ori=data.mocap_quat[mocap_id],
             )
 
-            # Integrate dq.
-            q = physics.data.qpos.copy()
-            mujoco.mj_integratePos(physics.model.ptr, q, dq, INTEGRATION_TIME)
-            np.clip(q, jnt_range[:, 0], jnt_range[:, 1], out=q)
+            # The UR5 uses position actuators, so we need to integrate the joint
+            # velocities to feed it desired joint positions.
+            q = data.qpos.copy()
+            mujoco.mj_integratePos(model, q, dq, control_dt)
+            np.clip(q, *jnt_limits.T, out=q)
 
-            # Set the control and step the simulation.
-            physics.data.ctrl = q
-            physics.step(nstep=2)
+            data.ctrl[actuator_ids] = q
+            mujoco.mj_step(model, data, n_steps)
 
             viewer.sync()
-            time_until_next_step = physics.timestep() - (time.time() - step_start)
+            time_until_next_step = control_dt - (time.time() - step_start)
             if time_until_next_step > 0:
                 time.sleep(time_until_next_step)
 

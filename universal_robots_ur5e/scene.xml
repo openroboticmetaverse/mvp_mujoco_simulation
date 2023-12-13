@@ -1,5 +1,4 @@
 <mujoco model="ur5e scene">
-
   <include file="ur5e.xml"/>
 
   <statistic center="0.3 0 0.4" extent="0.8"/>
@@ -25,5 +24,4 @@
       <site type="sphere" size="0.01" rgba="0 0 1 1" group="1"/>
     </body>
   </worldbody>
-
 </mujoco>

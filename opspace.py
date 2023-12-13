@@ -54,20 +54,6 @@ def pd_control(
     return x_err + dx_err
 
 
-def _orientation_error(
-    quat: np.ndarray,
-    quat_des: np.ndarray,
-) -> np.ndarray:
-    quat_err = tr.quat_mul(quat, tr.quat_conj(quat_des))
-    quat_err /= np.linalg.norm(quat_err)
-    axis_angle = tr.quat_to_axisangle(quat_err)
-    if quat_err[0] < 0.0:
-        angle = np.linalg.norm(axis_angle) - 2 * np.pi
-    else:
-        angle = np.linalg.norm(axis_angle)
-    return axis_angle * angle
-
-
 def pd_control_orientation(
     quat: np.ndarray,
     quat_des: np.ndarray,
@@ -76,8 +62,8 @@ def pd_control_orientation(
     dw_max: float = 0.0,
 ) -> np.ndarray:
     # Compute error.
-    # ori_err = tr.quat_to_axisangle(tr.quat_diff_active(quat, quat_des))
-    ori_err = _orientation_error(quat, quat_des)
+    quat_err = tr.quat_diff_active(source_quat=quat_des, target_quat=quat)
+    ori_err = tr.quat_to_axisangle(quat_err)
     w_err = w
 
     # Apply gains.
@@ -233,7 +219,9 @@ def main() -> None:
     dof_ids = np.array(physics.bind(jnts).dofadr)
     eef_site = mjcf_root.find("site", "attachment_site")
 
-    with mujoco.viewer.launch_passive(physics.model.ptr, physics.data.ptr) as viewer:
+    with mujoco.viewer.launch_passive(
+        physics.model.ptr, physics.data.ptr, show_left_ui=False, show_right_ui=False
+    ) as viewer:
         physics.reset(0)
         while viewer.is_running():
             step_start = time.time()
@@ -241,7 +229,7 @@ def main() -> None:
             pos_des = physics.data.mocap_pos[0].copy()
             quat_des = physics.data.mocap_quat[0].copy()
 
-            # Compute spatial velocity.
+            # Compute torques.
             tau = opspace(
                 physics=physics,
                 site=eef_site,
@@ -251,10 +239,31 @@ def main() -> None:
                 ori=quat_des,
                 joint=HOME_QPOS,
                 gravity_comp=True,
+                pos_gains=(200.0, 200.0, 200.0),
+                ori_gains=(20.0, 20.0, 20.0),
+                damping_ratio=1.0,
+            )
+            # Clip torques to valid range.
+            np.clip(
+                a=tau,
+                a_min=physics.model.actuator_forcerange[:, 0],
+                a_max=physics.model.actuator_forcerange[:, 1],
+                out=tau,
             )
 
-            # Set the control and step the simulation.
-            physics.data.ctrl = tau @ np.linalg.pinv(physics.data.actuator_moment)
+            # Compute control inputs.
+            # ctrl = tau @ np.linalg.pinv(physics.data.actuator_moment)
+            # # Clip control inputs to valid range.
+            # np.clip(
+            #     a=ctrl,
+            #     a_min=physics.model.actuator_ctrlrange[:, 0],
+            #     a_max=physics.model.actuator_ctrlrange[:, 1],
+            #     out=ctrl,
+            # )
+
+            # Step the simulation.
+            # physics.data.ctrl = ctrl
+            physics.bind(jnts).qfrc_applied[:] = tau
             physics.step()
 
             viewer.sync()
