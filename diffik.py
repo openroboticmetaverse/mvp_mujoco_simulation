@@ -1,78 +1,6 @@
-"""Differential inverse kinematics for the UR5e.
-
-Move the mocap body (red square) with your mouse (left click to rotate, right click to
-translate) and watch the UR5e end-effector track its position and orientation.
-"""
-
 import mujoco
 import numpy as np
-import mujoco.viewer
 import time
-
-
-def jacobian(
-    model: mujoco.MjModel, data: mujoco.MjData, site_id: int, dof_ids: np.ndarray
-) -> np.ndarray:
-    jac = np.zeros((6, model.nv))
-    mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
-    return jac[:, dof_ids]
-
-
-def spatial_velocity(
-    pos: np.ndarray,
-    pos_des: np.ndarray,
-    quat: np.ndarray,
-    quat_des: np.ndarray,
-    dt: float,
-) -> np.ndarray:
-    # Angular velocity.
-    quat_conj = np.zeros(4)
-    mujoco.mju_negQuat(quat_conj, quat)
-    error_quat = np.zeros(4)
-    mujoco.mju_mulQuat(error_quat, quat_des, quat_conj)
-    dw = np.zeros(3)
-    mujoco.mju_quat2Vel(dw, error_quat, 1.0)
-
-    # Linear velocity.
-    dx = pos_des - pos
-
-    return np.concatenate([dx, dw], axis=0) / dt
-
-
-def diff_ik(
-    model: mujoco.MjModel,
-    data: mujoco.MjData,
-    site_id: int,
-    dof_ids: np.ndarray,
-    pos: np.ndarray,
-    ori: np.ndarray,
-    control_dt: float,
-    damping: float = 0.0,
-) -> np.ndarray:
-    # We only get access to xmat for sites, so we need to convert it to a quaternion.
-    # Note: mju_mat2Quat returns a unit quaternion so no need to normalize.
-    quat = np.zeros(4)
-    mujoco.mju_mat2Quat(quat, data.site(site_id).xmat)
-
-    twist = spatial_velocity(
-        pos=data.site(site_id).xpos,
-        pos_des=pos,
-        quat=quat,
-        quat_des=ori,
-        dt=control_dt,
-    )
-
-    jac = jacobian(model, data, site_id, dof_ids)
-
-    # Damped least-squares.
-    if damping > 0.0:
-        # v = (J^T * J + lambda * I)^+ * J^T * V.
-        return np.linalg.solve(
-            jac.T @ jac + np.eye(jac.shape[1]) * damping,
-            jac.T @ twist,
-        )
-    # Pseudoinverse: v = J^+ * V.
-    return np.linalg.lstsq(jac, twist, rcond=None)[0]
 
 
 def main() -> None:
@@ -82,8 +10,16 @@ def main() -> None:
     dt = model.opt.timestep
 
     # Control parameters.
-    control_dt = 5 * dt  # Control timestep (seconds).
-    damping = 1e-4  # Damping term for the pseudoinverse (unitless).
+    control_dt = 1 * dt  # Control timestep (seconds).
+    integration_dt = 1.0  # Integration timestep (seconds).
+    damping = 1e-5  # Damping term for the pseudoinverse (unitless).
+    Kps = np.asarray([4000.0, 4000.0, 4000.0, 1000.0, 1000.0, 1000.0])
+    Kds = np.asarray([400.0, 400.0, 400.0, 200.0, 200.0, 200.0])
+
+    # Set PD gains.
+    model.actuator_gainprm[:, 0] = Kps
+    model.actuator_biasprm[:, 1] = -Kps
+    model.actuator_biasprm[:, 2] = -Kds
 
     # Compute the number of simulation steps needed per control step.
     n_steps = int(round(control_dt / dt))
@@ -101,21 +37,12 @@ def main() -> None:
         "wrist_2_joint",
         "wrist_3_joint",
     ]
+    actuator_names = [name[:-6] for name in joint_names]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
+    actuator_ids = np.array([model.actuator(name).id for name in actuator_names])
 
     # Joint limits.
-    jnt_limits = model.jnt_range.copy()
-
-    # Actuator names we wish to control.
-    actuator_names = [
-        "shoulder_pan",
-        "shoulder_lift",
-        "elbow",
-        "wrist_1",
-        "wrist_2",
-        "wrist_3",
-    ]
-    actuator_ids = np.array([model.actuator(name).id for name in actuator_names])
+    jnt_limits = model.jnt_range[dof_ids]
 
     # Initial joint configuration saved as a keyframe in the XML file.
     key_name = "home"
@@ -128,29 +55,44 @@ def main() -> None:
     # Reset the simulation to the initial joint configuration.
     mujoco.mj_resetDataKeyframe(model, data, key_id)
 
-    with mujoco.viewer.launch_passive(model, data) as viewer:
+    # Pre-allocate numpy arrays.
+    jac = np.zeros((6, model.nv), dtype=np.float64)
+    site_quat = np.zeros(4, dtype=np.float64)
+    site_quat_conj = np.zeros(4, dtype=np.float64)
+    error_quat = np.zeros(4, dtype=np.float64)
+    dw = np.zeros(3, dtype=np.float64)
+    diag = damping * np.eye(model.nv)
+
+    with mujoco.viewer.launch_passive(
+        model=model,
+        data=data,
+        show_left_ui=False,
+        show_right_ui=False,
+    ) as viewer:
+        mujoco.mjv_defaultFreeCamera(model, viewer.cam)
         while viewer.is_running():
             step_start = time.time()
 
-            # Compute joint velocities needed to realize the desired spatial velocity.
-            dq = diff_ik(
-                model=model,
-                data=data,
-                site_id=site_id,
-                dof_ids=dof_ids,
-                control_dt=control_dt,
-                damping=damping,
-                pos=data.mocap_pos[mocap_id],
-                ori=data.mocap_quat[mocap_id],
-            )
+            dx = data.mocap_pos[mocap_id] - data.site(site_id).xpos
+            mujoco.mju_mat2Quat(site_quat, data.site(site_id).xmat)
+            mujoco.mju_negQuat(site_quat_conj, site_quat)
+            mujoco.mju_mulQuat(error_quat, data.mocap_quat[mocap_id], site_quat_conj)
+            mujoco.mju_quat2Vel(dw, error_quat, 1.0)
+            twist = np.concatenate([dx, dw], axis=0) / integration_dt
 
-            # The UR5 uses position actuators, so we need to integrate the joint
-            # velocities to feed it desired joint positions.
-            q = data.qpos.copy()
-            mujoco.mj_integratePos(model, q, dq, control_dt)
-            np.clip(q, *jnt_limits.T, out=q)
+            mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
 
-            data.ctrl[actuator_ids] = q
+            if damping > 0.0:
+                dq = np.linalg.solve(jac.T @ jac + diag, jac.T @ twist)
+            else:
+                dq = np.linalg.lstsq(jac, twist, rcond=None)[0]
+
+            q = data.qpos.copy()  # Note the copy here is important.
+            mujoco.mj_integratePos(model, q, dq, integration_dt)
+            ctrl = q[dof_ids]
+            np.clip(ctrl, *jnt_limits.T, out=ctrl)
+
+            data.ctrl[actuator_ids] = ctrl
             mujoco.mj_step(model, data, n_steps)
 
             viewer.sync()
