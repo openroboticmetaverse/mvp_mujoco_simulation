@@ -5,9 +5,10 @@ Single-file, no dependency, pedagogical implementations of common controllers fo
 ## Installation
 
 ```bash
-pip install mujoco
+pip install "mujoco>=3.1.0"
 ```
 
 ## Controllers
 
-* [differential inverse kinematics](diffik.py)
+* [differential inverse kinematics using the pseudoinverse](diffik.py)
+* [differential inverse kinematics using quadratic programming](diffik_qp.py)

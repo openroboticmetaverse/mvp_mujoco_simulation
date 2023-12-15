@@ -42,8 +42,9 @@ def main() -> None:
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in actuator_names])
 
-    # Joint limits.
+    # Limits.
     jnt_limits = model.jnt_range[dof_ids]
+    vel_limits = np.full((len(dof_ids),), np.pi)  # 180 deg/s.
 
     # Initial joint configuration saved as a keyframe in the XML file.
     key_name = "home"
@@ -57,11 +58,14 @@ def main() -> None:
     mujoco.mj_resetDataKeyframe(model, data, key_id)
 
     # Pre-allocate numpy arrays.
-    jac = np.zeros((6, model.nv))
-    site_quat = np.zeros(4)
-    site_quat_conj = np.zeros(4)
-    error_quat = np.zeros(4)
-    dw = np.zeros(3)
+    jac = np.zeros((6, model.nv), dtype=np.float64)
+    site_quat = np.zeros(4, dtype=np.float64)
+    site_quat_conj = np.zeros(4, dtype=np.float64)
+    error_quat = np.zeros(4, dtype=np.float64)
+    dw = np.zeros(3, dtype=np.float64)
+    dq = np.zeros(model.nv)
+    r = np.zeros((model.nv, model.nv + 7))
+    index = np.zeros(model.nv, np.int32)
     diag = damping * np.eye(model.nv)
 
     with mujoco.viewer.launch_passive(
@@ -85,11 +89,19 @@ def main() -> None:
             # Jacobian.
             mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
 
-            # Solve J * v = V with damped least squares to obtain joint velocities.
-            if damping > 0.0:
-                dq = np.linalg.solve(jac.T @ jac + diag, jac.T @ twist)
-            else:
-                dq = np.linalg.lstsq(jac, twist, rcond=None)[0]
+            # Solve the following quadratic program to obtain joint velocities:
+            # min_v ||J * v - V||_2^2
+            # s.t. v_lower <= v <= v_upper
+            #      q_lower <= q + dt * v <= q_upper
+            H = jac.T @ jac + diag
+            g = -jac.T @ twist
+            q_lower = (jnt_limits[:, 0] - data.qpos[dof_ids]) / dt
+            q_upper = (jnt_limits[:, 1] - data.qpos[dof_ids]) / dt
+            lower = np.maximum(-vel_limits, q_lower)
+            upper = np.minimum(vel_limits, q_upper)
+            rank = mujoco.mju_boxQP(dq, r, index, H, g, lower, upper)
+            if rank < 0:
+                print("QP failed!")
 
             # Integrate joint velocities to obtain joint positions.
             q = data.qpos.copy()  # Note the copy here is important.
