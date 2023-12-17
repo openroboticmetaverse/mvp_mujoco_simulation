@@ -43,7 +43,7 @@ def main() -> None:
     actuator_ids = np.array([model.actuator(name).id for name in actuator_names])
 
     # Joint limits.
-    jnt_limits = model.jnt_range[dof_ids]
+    jnt_limits = model.jnt_range
 
     # Initial joint configuration saved as a keyframe in the XML file.
     key_name = "home"
@@ -94,8 +94,8 @@ def main() -> None:
             # Integrate joint velocities to obtain joint positions.
             q = data.qpos.copy()  # Note the copy here is important.
             mujoco.mj_integratePos(model, q, dq, integration_dt)
+            np.clip(q, *jnt_limits.T, out=q)
             ctrl = q[dof_ids]
-            np.clip(ctrl, *jnt_limits.T, out=ctrl)
 
             # Set the control signal and step the simulation.
             data.ctrl[actuator_ids] = ctrl

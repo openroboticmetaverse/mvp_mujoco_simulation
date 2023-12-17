@@ -13,13 +13,13 @@ def main() -> None:
     control_dt = 5 * dt  # Control timestep (seconds).
     integration_dt = 1.0  # Integration timestep (seconds).
     damping = 1e-5  # Damping term for the pseudoinverse (unitless).
-    Kps = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
-    Kds = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
+    Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
+    Kd = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
 
     # Set PD gains.
-    model.actuator_gainprm[:, 0] = Kps
-    model.actuator_biasprm[:, 1] = -Kps
-    model.actuator_biasprm[:, 2] = -Kds
+    model.actuator_gainprm[:, 0] = Kp
+    model.actuator_biasprm[:, 1] = -Kp
+    model.actuator_biasprm[:, 2] = -Kd
 
     # Compute the number of simulation steps needed per control step.
     model.opt.timestep = dt
@@ -43,8 +43,8 @@ def main() -> None:
     actuator_ids = np.array([model.actuator(name).id for name in actuator_names])
 
     # Limits.
-    jnt_limits = model.jnt_range[dof_ids]
-    vel_limits = np.full((len(dof_ids),), np.pi)  # 180 deg/s.
+    jnt_limits = model.jnt_range
+    vel_limits = np.full((model.nq,), np.pi)  # 180 deg/s.
 
     # Initial joint configuration saved as a keyframe in the XML file.
     key_name = "home"
@@ -58,11 +58,11 @@ def main() -> None:
     mujoco.mj_resetDataKeyframe(model, data, key_id)
 
     # Pre-allocate numpy arrays.
-    jac = np.zeros((6, model.nv), dtype=np.float64)
-    site_quat = np.zeros(4, dtype=np.float64)
-    site_quat_conj = np.zeros(4, dtype=np.float64)
-    error_quat = np.zeros(4, dtype=np.float64)
-    dw = np.zeros(3, dtype=np.float64)
+    jac = np.zeros((6, model.nv))
+    site_quat = np.zeros(4)
+    site_quat_conj = np.zeros(4)
+    error_quat = np.zeros(4)
+    dw = np.zeros(3)
     dq = np.zeros(model.nv)
     r = np.zeros((model.nv, model.nv + 7))
     index = np.zeros(model.nv, np.int32)
@@ -84,21 +84,20 @@ def main() -> None:
             mujoco.mju_negQuat(site_quat_conj, site_quat)
             mujoco.mju_mulQuat(error_quat, data.mocap_quat[mocap_id], site_quat_conj)
             mujoco.mju_quat2Vel(dw, error_quat, 1.0)
-            twist = np.concatenate([dx, dw], axis=0) / integration_dt
+            twist = np.hstack([dx, dw]) / integration_dt
 
             # Jacobian.
             mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
 
-            # Solve the following quadratic program to obtain joint velocities:
+            # Solve QP:
             # min_v ||J * v - V||_2^2
             # s.t. v_lower <= v <= v_upper
             #      q_lower <= q + dt * v <= q_upper
             H = jac.T @ jac + diag
             g = -jac.T @ twist
-            q_lower = (jnt_limits[:, 0] - data.qpos[dof_ids]) / dt
-            q_upper = (jnt_limits[:, 1] - data.qpos[dof_ids]) / dt
-            lower = np.maximum(-vel_limits, q_lower)
-            upper = np.minimum(vel_limits, q_upper)
+            q_limits = (jnt_limits - data.qpos.reshape(-1, 1)) / dt
+            lower = np.maximum(-vel_limits, q_limits[:, 0])
+            upper = np.minimum(vel_limits, q_limits[:, 1])
             rank = mujoco.mju_boxQP(dq, r, index, H, g, lower, upper)
             if rank < 0:
                 print("QP failed!")
@@ -106,8 +105,8 @@ def main() -> None:
             # Integrate joint velocities to obtain joint positions.
             q = data.qpos.copy()  # Note the copy here is important.
             mujoco.mj_integratePos(model, q, dq, integration_dt)
+            np.clip(q, *jnt_limits.T, out=q)
             ctrl = q[dof_ids]
-            np.clip(ctrl, *jnt_limits.T, out=ctrl)
 
             # Set the control signal and step the simulation.
             data.ctrl[actuator_ids] = ctrl
