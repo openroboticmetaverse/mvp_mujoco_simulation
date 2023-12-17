@@ -13,7 +13,7 @@ def main() -> None:
     control_dt = 5 * dt  # Control timestep (seconds).
     integration_dt = 1.0  # Integration timestep (seconds).
     damping = 1e-5  # Damping term for the pseudoinverse (unitless).
-    Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
+    Kp = np.asarray([4000.0, 4000.0, 4000.0, 1000.0, 1000.0, 1000.0])
     Kd = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
 
     # Set PD gains.
@@ -64,6 +64,13 @@ def main() -> None:
     dw = np.zeros(3)
     diag = damping * np.eye(model.nv)
 
+    def circle(t: float, r: float, h: float, k: float, f: float) -> np.ndarray:
+        """Return the (x, y) coordinates of a circle with radius r centered at (h, k)
+        as a function of time t and frequency f."""
+        x = r * np.cos(2 * np.pi * f * t) + h
+        y = r * np.sin(2 * np.pi * f * t) + k
+        return np.array([x, y])
+
     with mujoco.viewer.launch_passive(
         model=model,
         data=data,
@@ -74,16 +81,18 @@ def main() -> None:
         while viewer.is_running():
             step_start = time.time()
 
+            data.mocap_pos[mocap_id, 0:2] = circle(data.time, 0.1, 0.5, 0.0, 0.5)
+
             # Spatial velocity (aka twist).
             dx = data.mocap_pos[mocap_id] - data.site(site_id).xpos
             mujoco.mju_mat2Quat(site_quat, data.site(site_id).xmat)
             mujoco.mju_negQuat(site_quat_conj, site_quat)
             mujoco.mju_mulQuat(error_quat, data.mocap_quat[mocap_id], site_quat_conj)
             mujoco.mju_quat2Vel(dw, error_quat, 1.0)
-            twist = np.hstack([dx, dw]) / integration_dt
+            twist = np.hstack([dw, dx]) / integration_dt
 
             # Jacobian.
-            mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
+            mujoco.mj_jacSite(model, data, jac[3:], jac[:3], site_id)
 
             # Solve J * v = V with damped least squares to obtain joint velocities.
             if damping > 0.0:
