@@ -1,8 +1,10 @@
 # MuJoCo Controllers
 
-Single-file, no dependency, pedagogical implementations of common controllers for MuJoCo.
+Single-file pedagogical implementations of common robotics controllers for MuJoCo.
 
 ## Installation
+
+MuJoCo is the only dependency required to run the controllers.
 
 ```bash
 pip install "mujoco>=3.1.0"

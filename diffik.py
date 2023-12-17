@@ -13,13 +13,13 @@ def main() -> None:
     control_dt = 5 * dt  # Control timestep (seconds).
     integration_dt = 1.0  # Integration timestep (seconds).
     damping = 1e-5  # Damping term for the pseudoinverse (unitless).
-    Kps = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
-    Kds = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
+    Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
+    Kd = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
 
     # Set PD gains.
-    model.actuator_gainprm[:, 0] = Kps
-    model.actuator_biasprm[:, 1] = -Kps
-    model.actuator_biasprm[:, 2] = -Kds
+    model.actuator_gainprm[:, 0] = Kp
+    model.actuator_biasprm[:, 1] = -Kp
+    model.actuator_biasprm[:, 2] = -Kd
 
     # Compute the number of simulation steps needed per control step.
     model.opt.timestep = dt
@@ -80,7 +80,7 @@ def main() -> None:
             mujoco.mju_negQuat(site_quat_conj, site_quat)
             mujoco.mju_mulQuat(error_quat, data.mocap_quat[mocap_id], site_quat_conj)
             mujoco.mju_quat2Vel(dw, error_quat, 1.0)
-            twist = np.concatenate([dx, dw], axis=0) / integration_dt
+            twist = np.hstack([dx, dw]) / integration_dt
 
             # Jacobian.
             mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
