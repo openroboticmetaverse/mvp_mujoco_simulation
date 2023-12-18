@@ -113,9 +113,7 @@ def main() -> None:
             q_limits = (jnt_limits - data.qpos.reshape(-1, 1)) / integration_dt
             lower = np.maximum(-vel_limits, q_limits[:, 0])
             upper = np.minimum(vel_limits, q_limits[:, 1])
-            rank = mujoco.mju_boxQP(dq, r, index, H, g, lower, upper)
-            if rank < 0:
-                print("QP failed!")
+            mujoco.mju_boxQP(dq, r, index, H, g, lower, upper)
 
             # Integrate joint velocities to obtain joint positions.
             q = data.qpos.copy()  # Note the copy here is important.

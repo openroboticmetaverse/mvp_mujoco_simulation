@@ -1,7 +1,13 @@
+"""This implementation has a dependency on the open-source qpsolvers package. It exists
+for comparison purposes only.
+
+Install qpsolvers with: `pip install "qpsolvers[open_source_solvers]"`.
+"""
+
 import mujoco
 import numpy as np
-import cvxpy as cp
 import time
+import qpsolvers as qp
 
 
 def main() -> None:
@@ -66,12 +72,6 @@ def main() -> None:
     dw = np.zeros(3)
     dq = np.zeros(model.nv)
     diag = damping * np.eye(model.nv)
-    v = cp.Variable(model.nv)
-    G1 = np.vstack([-np.eye(model.nv), np.eye(model.nv)])
-    h1 = np.hstack([vel_limits, vel_limits])
-    G2 = np.vstack(
-        [-integration_dt * np.eye(model.nv), integration_dt * np.eye(model.nv)]
-    )
 
     def circle(t: float, r: float, h: float, k: float, f: float) -> np.ndarray:
         """Return the (x, y) coordinates of a circle with radius r centered at (h, k)
@@ -103,45 +103,14 @@ def main() -> None:
             # Jacobian.
             mujoco.mj_jacSite(model, data, jac[3:], jac[:3], site_id)
 
-            # Solve QP:
-            # min_v 1/2 * v^T * P * v + q^T * v
-            # s.t. G v <= h
-            # P = J^T * J + lambda * I
-            # q = -J^T * twist
-            # (see diffik_qp.py for derivation of P and q)
-            # Constraints:
-            # Rewrite v_min <= v <= v_max as:
-            # v_min - v <= 0 --> -v <= -v_min
-            # -v[0] <= -v_min[0]
-            # -v[1] <= -v_min[1]
-            # ...
-            # -v[nv-1] <= -v_min[nv-1]
-            # Same for v - v_max <= 0 --> v <= v_max
-            # Thus G1 = [[-I], [I]]
-            # and h1 = [[-v_min], [v_max]] (2nv, 1)
-            # Rewrite q_lower <= q + dt * v <= q_upper as:
-            # q_lower - q - dt * v <= 0 --> - dt * v <= q - q_lower
-            # -dt * v[0] <= -q_lower[0] + q[0]
-            # -dt * v[1] <= -q_lower[1] + q[1]
-            # ...
-            # -dt * v[nv-1] <= -q_lower[nv-1] + q[nv-1]
-            # Same for q_upper - q - dt * v <= 0 --> dt * v <= q_upper - q
-            # Thus G2 = [[-dt * I], [dt * I]]
-            h2 = np.hstack(
-                [
-                    data.qpos[dof_ids] - jnt_limits[:, 0],
-                    jnt_limits[:, 1] - data.qpos[dof_ids],
-                ]
-            )
-            G = np.vstack([G1, G2])
-            h = np.hstack([h1, h2])
             P = jac.T @ jac + diag
             q = -jac.T @ twist
-            prob = cp.Problem(cp.Minimize(cp.quad_form(v, P) + q.T @ v), [G @ v <= h])
-            prob.solve(solver=cp.CVXOPT)
-            dq = v.value
+            q_limits = (jnt_limits - data.qpos.reshape(-1, 1)) / integration_dt
+            lower = np.maximum(-vel_limits, q_limits[:, 0])
+            upper = np.minimum(vel_limits, q_limits[:, 1])
+            dq = qp.solve_qp(P, q, lb=lower, ub=upper, solver="proxqp")
 
-            # Integrate joint velocities to obtain joint positions.
+            # Integrate joint velocities to obtain jointw positions.
             q = data.qpos.copy()  # Note the copy here is important.
             mujoco.mj_integratePos(model, q, dq, integration_dt)
             np.clip(q, *jnt_limits.T, out=q)
