@@ -102,6 +102,12 @@ def main() -> None:
             # min_v ||J * v - V||_2^2
             # s.t. v_lower <= v <= v_upper
             #      q_lower <= q + dt * v <= q_upper
+            # Rewrite as:
+            # min_v 1/2 * v^T * H * v + g^T * v
+            # s.t. v_lower <= v <= v_upper
+            #      q_lower <= q + dt * v <= q_upper
+            # where H = J^T * J + diag(damping)
+            #       g = -J^T * V
             H = jac.T @ jac + diag
             g = -jac.T @ twist
             q_limits = (jnt_limits - data.qpos.reshape(-1, 1)) / integration_dt

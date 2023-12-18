@@ -104,11 +104,11 @@ def main() -> None:
             mujoco.mj_jacSite(model, data, jac[3:], jac[:3], site_id)
 
             # Solve QP:
-            # min 0.5 * v^T P v + q^T v
+            # min_v 1/2 * v^T * P * v + q^T * v
             # s.t. G v <= h
-            # Objective:
-            # P = J^T J + lambda * I
-            # q = -J^T twist
+            # P = J^T * J + lambda * I
+            # q = -J^T * twist
+            # (see diffik_qp.py for derivation of P and q)
             # Constraints:
             # Rewrite v_min <= v <= v_max as:
             # v_min - v <= 0 --> -v <= -v_min
