@@ -69,7 +69,9 @@ def main() -> None:
     v = cp.Variable(model.nv)
     G1 = np.vstack([-np.eye(model.nv), np.eye(model.nv)])
     h1 = np.hstack([vel_limits, vel_limits])
-    G2 = np.vstack([-dt * np.eye(model.nv), dt * np.eye(model.nv)])
+    G2 = np.vstack(
+        [-integration_dt * np.eye(model.nv), integration_dt * np.eye(model.nv)]
+    )
 
     def circle(t: float, r: float, h: float, k: float, f: float) -> np.ndarray:
         """Return the (x, y) coordinates of a circle with radius r centered at (h, k)

@@ -104,7 +104,7 @@ def main() -> None:
             #      q_lower <= q + dt * v <= q_upper
             H = jac.T @ jac + diag
             g = -jac.T @ twist
-            q_limits = (jnt_limits - data.qpos.reshape(-1, 1)) / dt
+            q_limits = (jnt_limits - data.qpos.reshape(-1, 1)) / integration_dt
             lower = np.maximum(-vel_limits, q_limits[:, 0])
             upper = np.minimum(vel_limits, q_limits[:, 1])
             rank = mujoco.mju_boxQP(dq, r, index, H, g, lower, upper)
