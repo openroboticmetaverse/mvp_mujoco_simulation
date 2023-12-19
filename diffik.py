@@ -11,7 +11,6 @@ def main() -> None:
     # Control parameters.
     dt = 0.005  # Simulation timestep (seconds).
     control_dt = 5 * dt  # Control timestep (seconds).
-    integration_dt = 1.0  # Integration timestep (seconds).
     damping = 1e-5  # Damping term for the pseudoinverse (unitless).
     Kp = np.asarray([4000.0, 4000.0, 4000.0, 1000.0, 1000.0, 1000.0])
     Kd = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
@@ -89,7 +88,7 @@ def main() -> None:
             mujoco.mju_negQuat(site_quat_conj, site_quat)
             mujoco.mju_mulQuat(error_quat, data.mocap_quat[mocap_id], site_quat_conj)
             mujoco.mju_quat2Vel(dw, error_quat, 1.0)
-            twist = np.hstack([dw, dx]) / integration_dt
+            twist = np.hstack([dw, dx])
 
             # Jacobian.
             mujoco.mj_jacSite(model, data, jac[3:], jac[:3], site_id)
@@ -102,7 +101,7 @@ def main() -> None:
 
             # Integrate joint velocities to obtain joint positions.
             q = data.qpos.copy()  # Note the copy here is important.
-            mujoco.mj_integratePos(model, q, dq, integration_dt)
+            mujoco.mj_integratePos(model, q, dq, 1.0)
             np.clip(q, *jnt_limits.T, out=q)
             ctrl = q[dof_ids]
 

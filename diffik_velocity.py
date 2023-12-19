@@ -5,20 +5,21 @@ import time
 
 def main() -> None:
     # Load the model and data.
-    model = mujoco.MjModel.from_xml_path("universal_robots_ur5e/scene.xml")
+    model = mujoco.MjModel.from_xml_path("franka_emika_panda/scene_velocity.xml")
     data = mujoco.MjData(model)
 
     # Control parameters.
-    dt = 0.005  # Simulation timestep (seconds).
+    dt = 0.002  # Simulation timestep (seconds).
     control_dt = 5 * dt  # Control timestep (seconds).
     damping = 1e-5  # Damping term for the pseudoinverse (unitless).
-    Kp = np.asarray([4000.0, 4000.0, 4000.0, 1000.0, 1000.0, 1000.0])
-    Kd = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
+    Kv = np.asarray([50.0] * model.nu)  # Velocity gains (rad/s).
 
     # Set PD gains.
-    model.actuator_gainprm[:, 0] = Kp
-    model.actuator_biasprm[:, 1] = -Kp
-    model.actuator_biasprm[:, 2] = -Kd
+    model.actuator_gainprm[:, 0] = Kv
+    model.actuator_biasprm[:, 2] = -Kv
+
+    # Enable gravity compensation.
+    model.body_gravcomp[:] = 1.0
 
     # Compute the number of simulation steps needed per control step.
     model.opt.timestep = dt
@@ -29,21 +30,13 @@ def main() -> None:
     site_id = model.site(site_name).id
 
     # Joint names we wish to control.
-    joint_names = [
-        "shoulder_pan_joint",
-        "shoulder_lift_joint",
-        "elbow_joint",
-        "wrist_1_joint",
-        "wrist_2_joint",
-        "wrist_3_joint",
-    ]
-    actuator_names = [name[:-5] + "position" for name in joint_names]
+    joint_names = [f"joint{i}" for i in range(1, 8)]
+    actuator_names = [f"actuator{i}" for i in range(1, 8)]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in actuator_names])
 
     # Limits.
-    jnt_limits = model.jnt_range
-    vel_limits = np.full((model.nq,), np.pi)  # 180 deg/s.
+    vel_limits = model.actuator_ctrlrange  # rad/s.
 
     # Initial joint configuration saved as a keyframe in the XML file.
     key_name = "home"
@@ -62,9 +55,6 @@ def main() -> None:
     site_quat_conj = np.zeros(4)
     error_quat = np.zeros(4)
     dw = np.zeros(3)
-    dq = np.zeros(model.nv)
-    r = np.zeros((model.nv, model.nv + 7))
-    index = np.zeros(model.nv, np.int32)
     diag = damping * np.eye(model.nv)
 
     def circle(t: float, r: float, h: float, k: float, f: float) -> np.ndarray:
@@ -92,35 +82,22 @@ def main() -> None:
             mujoco.mju_negQuat(site_quat_conj, site_quat)
             mujoco.mju_mulQuat(error_quat, data.mocap_quat[mocap_id], site_quat_conj)
             mujoco.mju_quat2Vel(dw, error_quat, 1.0)
-            twist = np.hstack([dw, dx])
+            twist = np.hstack([dw, dx]) / 0.05
 
             # Jacobian.
             mujoco.mj_jacSite(model, data, jac[3:], jac[:3], site_id)
 
-            # Solve QP:
-            # min_v ||J * v - V||_2^2
-            # s.t. v_lower <= v <= v_upper
-            #      q_lower <= q + dt * v <= q_upper
-            # Rewrite as:
-            # min_v 1/2 * v^T * H * v + g^T * v
-            # s.t. v_lower <= v <= v_upper
-            #      q_lower <= q + dt * v <= q_upper
-            # where H = J^T * J + diag(damping)
-            #       g = -J^T * V
-            H = jac.T @ jac + diag
-            g = -jac.T @ twist
-            q_limits = (jnt_limits - data.qpos.reshape(-1, 1)) / control_dt
-            lower = np.maximum(-vel_limits, q_limits[:, 0])
-            upper = np.minimum(vel_limits, q_limits[:, 1])
-            mujoco.mju_boxQP(dq, r, index, H, g, lower, upper)
+            # Solve J * v = V with damped least squares to obtain joint velocities.
+            if damping > 0.0:
+                dq = np.linalg.solve(jac.T @ jac + diag, jac.T @ twist)
+            else:
+                dq = np.linalg.lstsq(jac, twist, rcond=None)[0]
 
-            # Integrate joint velocities to obtain joint positions.
-            q = data.qpos.copy()  # Note the copy here is important.
-            mujoco.mj_integratePos(model, q, dq, 1.0)
-            np.clip(q, *jnt_limits.T, out=q)
-            ctrl = q[dof_ids]
+            # Clip the joint velocities to the velocity limits.
+            np.clip(dq, *vel_limits.T, out=dq)
+            ctrl = dq[dof_ids]
 
-            # Set the control signal and step the simulation.
+            # Only set the control signal every n_steps.
             data.ctrl[actuator_ids] = ctrl
             mujoco.mj_step(model, data, n_steps)
 
