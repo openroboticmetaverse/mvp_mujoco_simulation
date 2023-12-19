@@ -8,12 +8,28 @@ def main() -> None:
     model = mujoco.MjModel.from_xml_path("universal_robots_ur5e/scene.xml")
     data = mujoco.MjData(model)
 
-    # Control parameters.
-    dt = 0.005  # Simulation timestep (seconds).
-    control_dt = 5 * dt  # Control timestep (seconds).
+    # ======================================================================== #
+    # Hyperparameters for the controller.
+    # ======================================================================== #
+    dt = 0.002  # Simulation timestep (seconds).
+    control_dt = 2 * dt  # Control timestep (seconds).
+
+    # Gains for the linear and angular velocity terms in the twist computation. These
+    # values should be in the range [0, 1], where 0 corresponds to not moving at all
+    # and 1 corresponds to moving to the target pose in a single integration step.
+    linvel_gain = 0.95
+    angvel_gain = 0.95
+
+    # Amount of time the joint velocities are integrated over to obtain the joint
+    # positions. This should be set to a value that is large enough to allow the
+    # joints to move to the target pose, but not so large that the joints overshoot.
+    integration_dt = 0.01  # (seconds).
+
     damping = 1e-5  # Damping term for the pseudoinverse (unitless).
-    Kp = np.asarray([4000.0, 4000.0, 4000.0, 1000.0, 1000.0, 1000.0])
-    Kd = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
+
+    Kp = np.asarray([1000.0, 1000.0, 1000.0, 500.0, 500.0, 500.0])
+    Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0])
+    # ======================================================================== #
 
     # Set PD gains.
     model.actuator_gainprm[:, 0] = Kp
@@ -88,10 +104,12 @@ def main() -> None:
             mujoco.mju_negQuat(site_quat_conj, site_quat)
             mujoco.mju_mulQuat(error_quat, data.mocap_quat[mocap_id], site_quat_conj)
             mujoco.mju_quat2Vel(dw, error_quat, 1.0)
-            twist = np.hstack([dw, dx])
+            angular = dw * angvel_gain / dt
+            linear = dx * linvel_gain / dt
+            twist = np.hstack([linear, angular])
 
             # Jacobian.
-            mujoco.mj_jacSite(model, data, jac[3:], jac[:3], site_id)
+            mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
 
             # Solve J * v = V with damped least squares to obtain joint velocities.
             if damping > 0.0:
@@ -101,7 +119,7 @@ def main() -> None:
 
             # Integrate joint velocities to obtain joint positions.
             q = data.qpos.copy()  # Note the copy here is important.
-            mujoco.mj_integratePos(model, q, dq, 1.0)
+            mujoco.mj_integratePos(model, q, dq, integration_dt)
             np.clip(q, *jnt_limits.T, out=q)
             ctrl = q[dof_ids]
 
