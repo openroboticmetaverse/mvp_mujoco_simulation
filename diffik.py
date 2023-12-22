@@ -4,8 +4,8 @@ import numpy as np
 import time
 
 # Controller parameters.
-integration_dt: float = 1.0
-damping: float = 1e-5  # Damping term for the pseudoinverse (unitless).
+integration_dt: float = 1.0  # Integration timestep (seconds).
+damping: float = 1e-5  # Damping term for the pseudoinverse.
 
 
 def main() -> None:
@@ -15,7 +15,7 @@ def main() -> None:
 
     # Set PD gains.
     Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
-    Kd = np.asarray([200.0, 200.0, 200.0, 50.0, 50.0, 50.0])
+    Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0])
     model.actuator_gainprm[:, 0] = Kp
     model.actuator_biasprm[:, 1] = -Kp
     model.actuator_biasprm[:, 2] = -Kd
