@@ -12,23 +12,17 @@ def main() -> None:
     # Hyperparameters for the controller.
     # ======================================================================== #
     dt = 0.002  # Simulation timestep (seconds).
-    control_dt = 2 * dt  # Control timestep (seconds).
-
-    # Gains for the linear and angular velocity terms in the twist computation. These
-    # values should be in the range [0, 1], where 0 corresponds to not moving at all
-    # and 1 corresponds to moving to the target pose in a single integration step.
-    linvel_gain = 0.95
-    angvel_gain = 0.95
+    control_dt = 0.01  # Control timestep (seconds).
 
     # Amount of time the joint velocities are integrated over to obtain the joint
     # positions. This should be set to a value that is large enough to allow the
     # joints to move to the target pose, but not so large that the joints overshoot.
-    integration_dt = 0.01  # (seconds).
+    integration_dt = 1.0  # (seconds).
 
     damping = 1e-5  # Damping term for the pseudoinverse (unitless).
 
-    Kp = np.asarray([1000.0, 1000.0, 1000.0, 500.0, 500.0, 500.0])
-    Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0])
+    Kp = np.asarray([2000.0, 2000.0, 2000.0, 2000.0, 2000.0, 2000.0])
+    Kd = np.asarray([100.0, 100.0, 100.0, 100.0, 100.0, 100.0])
     # ======================================================================== #
 
     # Set PD gains.
@@ -73,10 +67,8 @@ def main() -> None:
 
     # Pre-allocate numpy arrays.
     jac = np.zeros((6, model.nv))
+    twist = np.zeros(6)
     site_quat = np.zeros(4)
-    site_quat_conj = np.zeros(4)
-    error_quat = np.zeros(4)
-    dw = np.zeros(3)
     diag = damping * np.eye(model.nv)
 
     def circle(t: float, r: float, h: float, k: float, f: float) -> np.ndarray:
@@ -99,14 +91,11 @@ def main() -> None:
             data.mocap_pos[mocap_id, 0:2] = circle(data.time, 0.1, 0.5, 0.0, 0.5)
 
             # Spatial velocity (aka twist).
-            dx = data.mocap_pos[mocap_id] - data.site(site_id).xpos
+            twist[:3] = data.mocap_pos[mocap_id] - data.site(site_id).xpos
             mujoco.mju_mat2Quat(site_quat, data.site(site_id).xmat)
-            mujoco.mju_negQuat(site_quat_conj, site_quat)
-            mujoco.mju_mulQuat(error_quat, data.mocap_quat[mocap_id], site_quat_conj)
-            mujoco.mju_quat2Vel(dw, error_quat, 1.0)
-            angular = dw * angvel_gain / dt
-            linear = dx * linvel_gain / dt
-            twist = np.hstack([linear, angular])
+            mujoco.mju_subQuat(twist[3:], site_quat, data.mocap_quat[mocap_id])
+            mujoco.mju_rotVecQuat(twist[3:], twist[3:], site_quat)
+            twist[3:] *= -1.0
 
             # Jacobian.
             mujoco.mj_jacSite(model, data, jac[:3], jac[3:], site_id)
