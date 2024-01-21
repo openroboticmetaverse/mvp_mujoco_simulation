@@ -10,7 +10,6 @@ services:
     volumes:
       - ./src:/sim_ws/src
       - /tmp/.X11-unix:/tmp/.X11-unix
-
     build:
       context: .
       dockerfile: docker/Dockerfile

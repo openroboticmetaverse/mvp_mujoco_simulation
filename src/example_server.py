@@ -4,16 +4,21 @@ import numpy as np
 import time
 import asyncio
 import websockets
+import pickle
 
 # Controller parameters.
 integration_dt: float = 1.0  # Integration timestep (seconds).
 damping: float = 1e-5  # Damping term for the pseudoinverse.
 
+# Server data
+PORT = 8081
+print("Server listening on Port " + str(PORT))
 
-async def main() -> None:
-    websocket = websockets.WebSocket()
-    websocket.connect('wss://localhost:8080')
-    #with websockets.connect('wss://localhost:8080') as websocket:
+# A set of connected ws clients
+connected = set()
+
+# The main behavior function for this server
+async def echo(websocket, path):
     # Load the model and data.
     model = mujoco.MjModel.from_xml_path("universal_robots_ur5e/scene.xml")
     data = mujoco.MjData(model)
@@ -105,9 +110,11 @@ async def main() -> None:
 
             # Integrate joint velocities to obtain joint positions.
             q = data.qpos.copy()  # Note the copy here is important.
-            await websocket.send(q)
+
+            q_string = pickle.dumps(q)
+            await websocket.send(q_string)
             print(q)
-            
+
             mujoco.mj_integratePos(model, q, dq, integration_dt)
             np.clip(q, *model.jnt_range.T, out=q)
 
@@ -120,7 +127,7 @@ async def main() -> None:
             if time_until_next_step > 0:
                 time.sleep(time_until_next_step)
 
-
-if __name__ == "__main__":
-    #main()
-    asyncio.get_event_loop().run_until_complete(main())
+# Start the server
+start_server = websockets.serve(echo, "localhost", PORT)
+asyncio.get_event_loop().run_until_complete(start_server)
+asyncio.get_event_loop().run_forever()
