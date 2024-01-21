@@ -1,0 +1,21 @@
+version: '2.4'
+
+services:
+  ros2_docker:
+    image: mvp_backend
+    container_name: mvp_backend
+    environment:
+      - DISPLAY
+      - AUTH_COOKIE=$AUTH_COOKIE
+    volumes:
+      - ./src:/sim_ws/src
+      - /tmp/.X11-unix:/tmp/.X11-unix
+
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    network_mode: host
+    ipc: host
+    privileged: false  
+    stdin_open: true
+    tty: true
