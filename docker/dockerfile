@@ -14,9 +14,8 @@ RUN python3 -m pip install  mujoco \
 RUN mkdir -p $WS_PATH
 WORKDIR $WS_PATH/
 COPY ./src ./src
+COPY ./config ./config
 WORKDIR $WS_PATH
-
-EXPOSE 8080
 
 ENV DISPLAY "unix:0"
 ENV WS_PATH $WS_PATH

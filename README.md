@@ -1,16 +1,45 @@
-# MuJoCo Controllers
+# MuJoCo Backend Server
 
-Single-file pedagogical implementations of common robotics controllers for MuJoCo.
+MVP Version of our backend using MuJoCo
 
-## Installation
-
-MuJoCo is the only dependency required to run the controllers.
+## Start Server
 
 ```bash
-pip install "mujoco>=3.1.0"
+docker compose build
 ```
+```bash
+docker compose up
+```
+
+Open a new terminal and open bash of container:
+```bash
+docker exec -it mvp_backend bash
+```
+Go to src folder:
+```bash
+cd src
+```
+And run server
+```bash
+python3 mujoco_backend.py
+```
+
+## Run Test Client
+Open a new terminal and open bash of container:
+```bash
+docker exec -it mvp_backend bash
+```
+Go to src folder:
+```bash
+cd src
+```
+And run server
+```bash
+python3 test_client.py
+```
+
 
 ## Acknowledgements
 
 Robot models are taken from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie).
-# MVP_Mujoco_backend
+
