@@ -13,7 +13,7 @@ docker compose up
 
 Open a new terminal and open bash of container:
 ```bash
-docker exec -it mvp_backend bash
+docker exec -it mvp_simulation bash
 ```
 Go to src folder:
 ```bash
@@ -21,13 +21,13 @@ cd src
 ```
 And run server
 ```bash
-python3 mujoco_backend.py
+python3 mujoco_simulation.py
 ```
 
 ## Run Test Client
 Open a new terminal and open bash of container:
 ```bash
-docker exec -it mvp_backend bash
+docker exec -it mvp_simulation bash
 ```
 Go to src folder:
 ```bash

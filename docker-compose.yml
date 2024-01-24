@@ -1,9 +1,9 @@
 version: '2.4'
 
 services:
-  backend_server_mvp:
-    image: mvp_backend
-    container_name: mvp_backend
+  mvp_simulation:
+    image: mvp_simulation
+    container_name: mvp_simulation
     environment:
       - DISPLAY
       - AUTH_COOKIE=$AUTH_COOKIE
