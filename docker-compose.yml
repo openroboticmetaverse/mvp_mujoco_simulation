@@ -1,7 +1,7 @@
 version: '2.4'
 
 services:
-  ros2_docker:
+  backend_server_mvp:
     image: mvp_backend
     container_name: mvp_backend
     environment:
@@ -9,7 +9,9 @@ services:
       - AUTH_COOKIE=$AUTH_COOKIE
     volumes:
       - ./src:/sim_ws/src
+      - ./config:/sim_ws/config
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - /dev/dri:/dev/dri
     build:
       context: .
       dockerfile: docker/Dockerfile

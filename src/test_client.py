@@ -2,8 +2,7 @@ import websockets
 import asyncio
 import pickle
 
-# The main function that will handle connection and communication 
-# with the server
+# The main function that will handle connection and communication with the server
 async def listen():
     url = "ws://127.0.0.1:8081"
     # Connect to the server
