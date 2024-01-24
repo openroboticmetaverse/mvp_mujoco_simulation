@@ -1,7 +1,1 @@
-*.ipynb
-mjc/
-NOTES.md
-opspace.py
-diffik_qpsolvers.py
-diffik_qp.py
-diffik_velocity.py
+.old
