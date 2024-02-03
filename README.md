@@ -38,6 +38,16 @@ And run server
 python3 test_client.py
 ```
 
+## Debugging
+In case you get the error: 
+```bash
+Authorization required, but no authorization protocol specified
+/usr/local/lib/python3.10/dist-packages/glfw/__init__.py:916: GLFWError: (65544) b'X11: Failed to open display :0'
+  warnings.warn(message, GLFWError)
+ERROR: could not initialize GLFW
+```
+Try to run ```xhost +``` before executing the server.
+Also check if your display variable is set correctly inside the container by running ```echo $DISPLAY```
 
 ## Acknowledgements
 
