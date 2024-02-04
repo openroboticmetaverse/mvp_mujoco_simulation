@@ -191,13 +191,13 @@
   </worldbody>
 
   <actuator>
-    <velocity name="actuator1" joint="joint1"  kv="50" forcerange="-87 87" ctrlrange="-1.74 1.74"/>
-    <velocity name="actuator2" joint="joint2"  kv="50" forcerange="-87 87" ctrlrange="-1.328 1.328"/>
-    <velocity name="actuator3" joint="joint3"  kv="50" forcerange="-87 87" ctrlrange="-1.957 1.957"/>
-    <velocity name="actuator4" joint="joint4"  kv="50" forcerange="-87 87" ctrlrange="-1.957 1.957"/>
-    <velocity name="actuator5" joint="joint5"  kv="50" forcerange="-12 12" ctrlrange="-3.485 3.485"/>
-    <velocity name="actuator6" joint="joint6"  kv="50" forcerange="-12 12" ctrlrange="-3.485 3.485"/>
-    <velocity name="actuator7" joint="joint7"  kv="50" forcerange="-12 12" ctrlrange="-4.545 4.545"/>
+    <velocity name="joint1" joint="joint1"  kv="50" forcerange="-87 87" ctrlrange="-1.74 1.74"/>
+    <velocity name="joint2" joint="joint2"  kv="50" forcerange="-87 87" ctrlrange="-1.328 1.328"/>
+    <velocity name="joint3" joint="joint3"  kv="50" forcerange="-87 87" ctrlrange="-1.957 1.957"/>
+    <velocity name="joint4" joint="joint4"  kv="50" forcerange="-87 87" ctrlrange="-1.957 1.957"/>
+    <velocity name="joint5" joint="joint5"  kv="50" forcerange="-12 12" ctrlrange="-3.485 3.485"/>
+    <velocity name="joint6" joint="joint6"  kv="50" forcerange="-12 12" ctrlrange="-3.485 3.485"/>
+    <velocity name="joint7" joint="joint7"  kv="50" forcerange="-12 12" ctrlrange="-4.545 4.545"/>
   </actuator>
 
   <keyframe>
