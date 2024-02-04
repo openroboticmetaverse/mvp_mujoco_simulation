@@ -28,12 +28,14 @@ class MuJocoBackendServer:
         self.integration_dt: float = 1.0                            # Integration timestep (seconds).
         self.damping: float = 1e-5                                  # Damping term for the pseudoinverse.
 
-        self.robot_path = "universal_robots_ur5e/scene.xml"         # Robot folder path in config
+        #self.robot_path = "universal_robots_ur5e/scene.xml"         # Robot folder path in config
+        self.robot_path = "kuka_iiwa_14/scene.xml" 
 
         # Joints you wish to control. You find them in the xml file.
-        self.joint_names = ["shoulder_pan", "shoulder_lift", "elbow",
-                            "wrist_1", "wrist_2", "wrist_3"
-                        ]
+        #self.joint_names = ["shoulder_pan", "shoulder_lift", "elbow",
+        #                    "wrist_1", "wrist_2", "wrist_3"]
+        self.joint_names = ["joint1", "joint2", "joint3", "joint4",
+                            "joint5", "joint6", "joint7"]
         
         self.name_home_pose = "home"                                # Name of initial joint configuration - see xml
 
@@ -46,6 +48,7 @@ class MuJocoBackendServer:
         print("Server is runnung and waiting for the client")
 
         self.setupRobotConfigs()
+
         start_server = websockets.serve(self.serverExecutable, self.host, self.port)
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
@@ -62,12 +65,17 @@ class MuJocoBackendServer:
         self.model = mujoco.MjModel.from_xml_path("../config/" + self.robot_path)
         self.data = mujoco.MjData(self.model)
 
+        self.num_joints = len(self.joint_names)
+
         # Set PD gains.
-        Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
-        Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0])
-        self.model.actuator_gainprm[:, 0] = Kp
-        self.model.actuator_biasprm[:, 1] = -Kp
-        self.model.actuator_biasprm[:, 2] = -Kd
+        #Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
+        #Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0])
+        Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0, 500.0])
+        Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0,  50.0])
+
+        #self.model.actuator_gainprm[:, 0] = Kp
+        #self.model.actuator_biasprm[:, 1] = -Kp
+        #self.model.actuator_biasprm[:, 2] = -Kd
 
         # Enable gravity compensation. Set to 0.0 to disable.
         self.model.body_gravcomp[:] = 1.0
@@ -112,12 +120,17 @@ class MuJocoBackendServer:
         site_quat_conj = np.zeros(4)
         error_quat = np.zeros(4)
 
-        with mujoco.viewer.launch_passive(
+        # TODO: Implement differentation when visualisation should be opened for debugging and when it 
+        # should run in the backend to save computational power
+        simViewer = mujoco.viewer.launch_passive(
             model=self.model,
             data=self.data,
             show_left_ui=False,
             show_right_ui=False,
-        ) as viewer:
+        )
+
+
+        with simViewer as viewer:
             mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
             while viewer.is_running():
                 step_start = time.time()
@@ -130,16 +143,19 @@ class MuJocoBackendServer:
                 mujoco.mju_mat2Quat(site_quat, self.data.site(self.site_id).xmat)
                 mujoco.mju_negQuat(site_quat_conj, site_quat)
                 mujoco.mju_mulQuat(error_quat, self.data.mocap_quat[self.mocap_id], site_quat_conj)
-                mujoco.mju_quat2Vel(twist[3:], error_quat, 1.0)
+
+                # Only determined by testing: twist needs to be 3 elements long (at least for robots with 6 or 7 joints)
+                mujoco.mju_quat2Vel(twist[-3:], error_quat, 1.0)
 
                 # Jacobian
-                mujoco.mj_jacSite(self.model, self.data, jac[:3], jac[3:], self.site_id)
+                # Only determined by testing: second jacobian needs to be 3 elements long (at least for robots with 6 or 7 joints)
+                mujoco.mj_jacSite(self.model, self.data, jac[:3], jac[-3:], self.site_id)
 
                 # Solve for joint velocities: J * dq = twist using damped least squares.
                 dq = np.linalg.solve(jac.T @ jac + diag, jac.T @ twist)
 
-                # Integrate joint velocities to obtain joint positions.
-                q = self.data.qpos.copy()  # Note the copy here is important.
+                # Integrate joint velocities to obtain joint positions - copying is important
+                q = self.data.qpos.copy()
 
                 # Transform array to send via websockets
                 q_format = create_output_string(self.joint_names, q)
@@ -158,6 +174,9 @@ class MuJocoBackendServer:
                 time_until_next_step = self.control_dt - (time.time() - step_start)
                 if time_until_next_step > 0:
                     time.sleep(time_until_next_step)
+                
+                # Debugging
+                #breakpoint()
 
 
 

@@ -190,7 +190,7 @@
     </body>
   </worldbody>
 
-  <actuator>
+  <!--<actuator>
     <motor class="panda" name="actuator1" joint="joint1" ctrlrange="-87 87"/>
     <motor class="panda" name="actuator2" joint="joint2" ctrlrange="-87 87"/>
     <motor class="panda" name="actuator3" joint="joint3" ctrlrange="-87 87"/>
@@ -198,6 +198,15 @@
     <motor class="panda" name="actuator5" joint="joint5" ctrlrange="-12 12"/>
     <motor class="panda" name="actuator6" joint="joint6" ctrlrange="-12 12"/>
     <motor class="panda" name="actuator7" joint="joint7" ctrlrange="-12 12"/>
+  </actuator>-->
+  <actuator>
+    <motor class="panda" name="joint1" joint="joint1" ctrlrange="-87 87"/>
+    <motor class="panda" name="joint2" joint="joint2" ctrlrange="-87 87"/>
+    <motor class="panda" name="joint3" joint="joint3" ctrlrange="-87 87"/>
+    <motor class="panda" name="joint4" joint="joint4" ctrlrange="-87 87"/>
+    <motor class="panda" name="joint5" joint="joint5" ctrlrange="-12 12"/>
+    <motor class="panda" name="joint6" joint="joint6" ctrlrange="-12 12"/>
+    <motor class="panda" name="joint7" joint="joint7" ctrlrange="-12 12"/>
   </actuator>
 
   <keyframe>
