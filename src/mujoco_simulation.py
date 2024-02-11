@@ -28,14 +28,15 @@ class MuJocoBackendServer:
         self.integration_dt: float = 1.0                            # Integration timestep (seconds).
         self.damping: float = 1e-5                                  # Damping term for the pseudoinverse.
 
-        #self.robot_path = "universal_robots_ur5e/scene.xml"         # Robot folder path in config
-        self.robot_path = "kuka_iiwa_14/scene.xml" 
+        self.robot_path = "universal_robots_ur5e/scene.xml"         # Robot folder path in config
+        #self.robot_path = "kuka_iiwa_14/scene.xml" 
+        #self.robot_path = "franka_emika_panda/scene.xml" 
 
         # Joints you wish to control. You find them in the xml file.
-        #self.joint_names = ["shoulder_pan", "shoulder_lift", "elbow",
-        #                    "wrist_1", "wrist_2", "wrist_3"]
-        self.joint_names = ["joint1", "joint2", "joint3", "joint4",
-                            "joint5", "joint6", "joint7"]
+        self.joint_names = ["shoulder_pan", "shoulder_lift", "elbow",
+                            "wrist_1", "wrist_2", "wrist_3"]
+        #self.joint_names = ["joint1", "joint2", "joint3", "joint4",
+        #                    "joint5", "joint6"]
         
         self.name_home_pose = "home"                                # Name of initial joint configuration - see xml
 
@@ -45,7 +46,7 @@ class MuJocoBackendServer:
         Start server.
         Need to be executed using asyncrio: asyncio.run(server.runServer())
         """
-        print("Server is runnung and waiting for the client")
+        print(">> Server is runnung and waiting for the client")
 
         self.setupRobotConfigs()
 
@@ -53,7 +54,7 @@ class MuJocoBackendServer:
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
 
-        print("Server was stopped")
+        print(">> Server was stopped")
 
 
     def setupRobotConfigs(self):
@@ -70,8 +71,8 @@ class MuJocoBackendServer:
         # Set PD gains.
         #Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0])
         #Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0])
-        Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0, 500.0])
-        Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0,  50.0])
+        #Kp = np.asarray([2000.0, 2000.0, 2000.0, 500.0, 500.0, 500.0, 500.0])
+        #Kd = np.asarray([100.0, 100.0, 100.0, 50.0, 50.0, 50.0,  50.0])
 
         #self.model.actuator_gainprm[:, 0] = Kp
         #self.model.actuator_biasprm[:, 1] = -Kp
@@ -110,7 +111,7 @@ class MuJocoBackendServer:
         Function is executed when a client connects to the server.
         """
 
-        print("Server listening on Port " + str(self.port))
+        print(">> Server listening on Port " + str(self.port))
 
         # Pre-allocate numpy arrays.
         jac = np.zeros((6, self.model.nv))
@@ -136,7 +137,8 @@ class MuJocoBackendServer:
                 step_start = time.time()
                 
                 # Get motion function
-                self.data.mocap_pos[self.mocap_id, 0:2] = circular_motion(self.data.time, 0.1, 0.5, 0.0, 0.5)
+                self.data.mocap_pos[self.mocap_id, 0:2] = circular_motion(self.data.time, 0.2, 0.4, 0.2, 0.5)
+                print(f"mocap_pos: {self.data.mocap_pos}")
 
                 # Spatial velocity (aka twist).
                 twist[:3] = self.data.mocap_pos[self.mocap_id] - self.data.site(self.site_id).xpos
