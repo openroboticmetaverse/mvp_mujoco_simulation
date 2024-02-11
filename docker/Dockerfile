@@ -9,7 +9,11 @@ RUN apt-get install -y x11-apps x11-utils libx11-dev \
 
 RUN python3 -m pip install  mujoco \
                             websockets \
-                            numpy
+                            numpy \
+                            mediapy\
+                            # temporary
+                            tqdm \
+                            ffmpeg
 
 RUN mkdir -p $WS_PATH
 WORKDIR $WS_PATH/
