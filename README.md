@@ -50,6 +50,6 @@ Try to run ```xhost +``` before executing the server.
 Also check if your display variable is set correctly inside the container by running ```echo $DISPLAY```
 
 ## Acknowledgements
-
+Kinematic calculations are taken from [Kevin Zakka](https://github.com/kevinzakka/mjctrl/).
 Robot models are taken from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie).
 
