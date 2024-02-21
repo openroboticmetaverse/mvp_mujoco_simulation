@@ -23,9 +23,11 @@ def create_output_string(joint_names, joint_values):
 
 
 
-joint_names_test = ["panda_joint1", "panda_joint2", "panda_joint4", "panda_joint6", "panda_joint7"]
-joint_values_test = [0.8326047832305474, 1.4897112838523152, -1.3823714659725588, -0.9357293466958847, 0.7023423271030382]
+
 def test_function():
+    joint_names_test = ["panda_joint1", "panda_joint2", "panda_joint4", "panda_joint6", "panda_joint7"]
+    joint_values_test = [0.8326047832305474, 1.4897112838523152, -1.3823714659725588, -0.9357293466958847, 0.7023423271030382]
+    
     output = create_output_string(joint_names_test, joint_values_test)
     print(output)
 
