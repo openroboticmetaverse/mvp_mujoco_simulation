@@ -1,6 +1,7 @@
-def create_output_string(joint_names, joint_values):
+def create_output_string(joint_names, name_prefix, joint_values):
     """
     Taking two arrays and generate the required output format.
+    name_prefix input is put before the joint_name.
     """
 
     if len(joint_names) != len(joint_values):
@@ -13,7 +14,7 @@ def create_output_string(joint_names, joint_values):
 
     output_string = '{"jointPositions":{'
     output_string += ",".join(
-        f'"{joint_name}":{joint_value}' for joint_name, joint_value in joint_positions.items()
+        f'"{name_prefix}{joint_name}":{joint_value}' for joint_name, joint_value in joint_positions.items()
     )
     output_string += "}}"
 
