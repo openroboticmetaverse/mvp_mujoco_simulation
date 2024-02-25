@@ -49,7 +49,7 @@ class MuJocoBackendServer:
         self.gravity_compensation: bool = True
 
         # Simulation timestep in seconds.
-        self.dt: float = 0.002
+        self.dt: float = 0.01   #0.002
 
         # Maximum allowable joint velocity in rad/s.
         self.max_angvel = 0.785
@@ -63,6 +63,9 @@ class MuJocoBackendServer:
             # UR5e - ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
             # Panda - ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
         self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+
+        # Used for websocket, prefix is put in before the joint name in the json
+        self.joint_name_prefix = "panda_"
         
         # Name of initial joint configuration - see xml
         self.name_home_pose = "home"
@@ -202,9 +205,10 @@ class MuJocoBackendServer:
 
                 try:
                     # Transform array to send via websockets
-                    q_format = create_output_string(self.joint_names, q)
-                    q_string = pickle.dumps(q_format)
+                    q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)
+                    #print(q_string)
                     await websocket.send(q_string)
+
                 except websockets.exceptions.ConnectionClosedError:
                     print("Client closed connection without sending close frame")
                     await websocket.close()
