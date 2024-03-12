@@ -1,19 +1,22 @@
-import websockets
 import asyncio
-import pickle
+import websockets
 
-# The main function that will handle connection and communication with the server
 async def listen():
     url = "ws://127.0.0.1:8081"
     # Connect to the server
     async with websockets.connect(url) as ws:
         # Send a greeting message
         await ws.send("Hello Server!")
-        # Stay alive forever, listening to incoming msgs
+
+        i = 1
         while True:
             msg = await ws.recv()
-            msg_array = pickle.loads(msg)
-            print(msg_array)
+            print(msg)
+            if i <= 100:
+                i += 1
+            else:
+                await ws.close(1000, "Close it now")
+                break
 
 # Start the connection
 asyncio.get_event_loop().run_until_complete(listen())
