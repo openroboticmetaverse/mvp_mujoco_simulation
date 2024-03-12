@@ -84,9 +84,10 @@ class MuJocoBackendServer:
         self.setupRobotConfigs()
 
         start_server = websockets.serve(self.serverExecutable, self.host, self.port)
+        
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
-
+        
         print(">> Server was stopped")
 
 
@@ -117,6 +118,15 @@ class MuJocoBackendServer:
         mocap_name = "target"
         self.mocap_id = self.model.body(mocap_name).mocapid[0]
 
+        # Pre-allocate numpy arrays.
+        self.jac = np.zeros((6, self.model.nv))
+        self.diag = self.damping * np.eye(self.model.nv)
+        self.eye = np.eye(self.model.nv)
+        self.twist = np.zeros(6)
+        self.site_quat = np.zeros(4)
+        self.site_quat_conj = np.zeros(4)
+        self.error_quat = np.zeros(4)
+
         
 
     async def serverExecutable(self, websocket, path):
@@ -124,99 +134,107 @@ class MuJocoBackendServer:
         Main behavior function for the server - currently only publishing demo data
         Function is executed when a client connects to the server.
         """
+
         print(">> Server listening on Port " + str(self.port))
 
         num_joints = len(self.joint_names)
 
-        # Pre-allocate numpy arrays.
-        jac = np.zeros((6, self.model.nv))
-        diag = self.damping * np.eye(self.model.nv)
-        eye = np.eye(self.model.nv)
-        twist = np.zeros(6)
-        site_quat = np.zeros(4)
-        site_quat_conj = np.zeros(4)
-        error_quat = np.zeros(4)
-
         # TODO: Implement differentation when visualisation should be opened for debugging and when it 
         # should run in the backend to save computational power
-        simViewer = mujoco.viewer.launch_passive(
-            model=self.model,
-            data=self.data,
-            show_left_ui=False,
-            show_right_ui=False,
-        )
+        #simViewer = mujoco.viewer.launch_passive(
+        #    model=self.model,
+        #    data=self.data,
+        #    show_left_ui=False,
+        #    show_right_ui=False,
+        #)
 
 
-        with simViewer as viewer:
-            # Reset the simulation.
-            mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
-            
-            # Reset the free camera.
-            mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
 
-            # Enable site frame visualization.
-            viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
-            
-            while viewer.is_running():
-                step_start = time.time()
-                
-                # Get motion function
-                self.data.mocap_pos[self.mocap_id, 0:2] = circular_motion(self.data.time, 0.1, 0.5, 0.0, 0.5)
+        #with simViewer as viewer:
+        # Reset the simulation.
+        mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
+        
+        # Reset the free camera.
+        #mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
 
-                # Spatial velocity (aka twist).
-                dx = self.data.mocap_pos[self.mocap_id] - self.data.site(self.site_id).xpos
-                twist[:3] = self.Kpos * dx / self.integration_dt
-                mujoco.mju_mat2Quat(site_quat, self.data.site(self.site_id).xmat)
-                mujoco.mju_negQuat(site_quat_conj, site_quat)
-                mujoco.mju_mulQuat(error_quat, self.data.mocap_quat[self.mocap_id], site_quat_conj)
-                mujoco.mju_quat2Vel(twist[3:], error_quat, 1.0)
-                twist[3:] *= self.Kori / self.integration_dt
+        # Enable site frame visualization.
+        #viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
+        
+        websocket_open = True
+        #while viewer.is_running():
+        while websocket_open:
+            step_start = time.time()
 
-                # Jacobian
-                mujoco.mj_jacSite(self.model, self.data, jac[:3], jac[3:], self.site_id)
+            # Get motion function
+            self.data.mocap_pos[self.mocap_id, 0:2] = circular_motion(self.data.time, 0.1, 0.5, 0.0, 0.5)
 
-                # Solve for joint velocities: J * dq = twist using damped least squares.
-                dq = np.linalg.solve(jac.T @ jac + diag, jac.T @ twist)
+            # Spatial velocity (aka twist).
+            dx = self.data.mocap_pos[self.mocap_id] - self.data.site(self.site_id).xpos
+            self.twist[:3] = self.Kpos * dx / self.integration_dt
+            mujoco.mju_mat2Quat(self.site_quat, self.data.site(self.site_id).xmat)
+            mujoco.mju_negQuat(self.site_quat_conj, self.site_quat)
+            mujoco.mju_mulQuat(self.error_quat, self.data.mocap_quat[self.mocap_id], self.site_quat_conj)
+            mujoco.mju_quat2Vel(self.twist[3:], self.error_quat, 1.0)
+            self.twist[3:] *= self.Kori / self.integration_dt
 
-                # Nullspace control biasing joint velocities towards the home configuration.
-                if num_joints == 7:
-                    dq += (eye - np.linalg.pinv(jac) @ jac) @ (self.Kn * (self.q0 - self.data.qpos[self.dof_ids]))
+            # Jacobian
+            mujoco.mj_jacSite(self.model, self.data, self.jac[:3], self.jac[3:], self.site_id)
 
-                # Clamp maximum joint velocity.
-                dq_abs_max = np.abs(dq).max()
-                if dq_abs_max > self.max_angvel:
-                    dq *= self.max_angvel / dq_abs_max
+            # Solve for joint velocities: J * dq = twist using damped least squares.
+            dq = np.linalg.solve(self.jac.T @ self.jac + self.diag, self.jac.T @ self.twist)
 
-                # Integrate joint velocities to obtain joint positions - copying is important
-                q = self.data.qpos.copy()
+            # Nullspace control biasing joint velocities towards the home configuration.
+            if num_joints == 7:
+                dq += (self.eye - np.linalg.pinv(self.jac) @ self.jac) @ (self.Kn * (self.q0 - self.data.qpos[self.dof_ids]))
 
-                # Adds a vector in the format of qvel (scaled by dt) to a vector in the format of qpos.
-                mujoco.mj_integratePos(self.model, q, dq, self.integration_dt)
-                np.clip(q, *self.model.jnt_range.T, out=q)
+            # Clamp maximum joint velocity.
+            dq_abs_max = np.abs(dq).max()
+            if dq_abs_max > self.max_angvel:
+                dq *= self.max_angvel / dq_abs_max
 
-                # Set the control signal and step the simulation.
-                self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
-                mujoco.mj_step(self.model, self.data)
+            # Integrate joint velocities to obtain joint positions - copying is important
+            q = self.data.qpos.copy()
 
-                viewer.sync()
-                time_until_next_step = self.dt - (time.time() - step_start)
-                if time_until_next_step > 0:
-                    time.sleep(time_until_next_step)
+            # Adds a vector in the format of qvel (scaled by dt) to a vector in the format of qpos.
+            mujoco.mj_integratePos(self.model, q, dq, self.integration_dt)
+            np.clip(q, *self.model.jnt_range.T, out=q)
 
-                try:
-                    # Transform array to send via websockets
-                    q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)
-                    #print(q_string)
-                    await websocket.send(q_string)
+            # Set the control signal and step the simulation.
+            self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
+            mujoco.mj_step(self.model, self.data)
 
-                except websockets.exceptions.ConnectionClosedError:
-                    print("Client closed connection without sending close frame")
-                    await websocket.close()
-                    break
+            #viewer.sync()
+            time_until_next_step = self.dt - (time.time() - step_start)
+            if time_until_next_step > 0:
+                await asyncio.sleep(time_until_next_step)
 
+            # Transform array to send via websockets
+            q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)
+
+            try:
+                await websocket.send(q_string)
+                print(q_string)
+
+            except websockets.exceptions.ConnectionClosedOK:
+                print("Connection closed - OK")
+                websocket_open = False
+                await websocket.close()
+                break
+
+            except websockets.exceptions.ConnectionClosedError:
+                print("Connection closed - Error")
+                websocket_open = False
+                await websocket.close()
+                break
+
+            except Exception as ex:
+                websocket_open = False
+                print(f"{type(ex)} : {ex}")
+                await websocket.close()
+                break
 
 
 
 if __name__ == "__main__":
     server = MuJocoBackendServer()
-    asyncio.run(server.runServer())
+    server.runServer()
