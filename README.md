@@ -48,7 +48,7 @@ cd src
 python3 mujoco_simulation.py
 ```
 
-## Test the Simulation 💻
+## Test the Websocket 💻
 
 Open a console in the container:
 ```bash
