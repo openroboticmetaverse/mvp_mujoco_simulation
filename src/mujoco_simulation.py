@@ -1,40 +1,33 @@
-"""
-Differential IK with nullspace control on a 7-DoF Panda.
-"""
 import mujoco
 import mujoco.viewer
 import numpy as np
 import time
 import asyncio
 import websockets
-import pickle
 
 from helpers import create_output_string
 from motion_functions import circular_motion
 
-class MuJocoBackendServer:
-    """
-    Class for the Mujoco backend server.
-    Currently it is only publishing demo data!
 
-    TODO: Deactivate visualisation
-    TODO: Function: Move to point
-    TODO: Select robot - get data from config-file
+class MuJocoSimulation:
+    """
+    Class for the Mujoco Simulation.
+    Currently it is only publishing demo data!
     """
     
     def __init__(self):
-        # Server data
+        # Websocket Settings
         self.host = "localhost"
         self.port = 8081
 
         # Integration timestep in seconds. This corresponds to the amount of time the joint
         # velocities will be integrated for to obtain the desired joint positions. 
-        # Source values: 6-DoF: 1.0, 7-DoF: 0.1
+        # Source values: 6-DoF robot: 1.0, 7-DoF robot: 0.1
         self.integration_dt: float = 1.0
 
         # Damping term for the pseudoinverse. This is used to prevent joint velocities from
         # becoming too large when the Jacobian is close to singular.
-        # Source values: 6-DoF: 1e-5, 7-DoF: 1e-4
+        # Source values: 6-DoF robot: 1e-5, 7-DoF robot: 1e-4
         self.damping: float = 1e-5
 
         # Gains for the twist computation. These should be between 0 and 1. 0 means no
@@ -54,17 +47,17 @@ class MuJocoBackendServer:
         # Maximum allowable joint velocity in rad/s.
         self.max_angvel = 0.785
 
-        # Robot specific settings
+        # Define path to robot xml file
             # UR5e - "universal_robots_ur5e/scene.xml"
             # Panda - "franka_emika_panda/scene.xml" 
         self.robot_path = "franka_emika_panda/scene.xml"
 
-        # Joints you wish to control. You find them in the xml file.
+        # Define joint names of the robot. They have to match the names of the urdf-file.
             # UR5e - ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
             # Panda - ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
         self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
 
-        # Used for websocket, prefix is put in before the joint name in the json
+        # Used as prefix of the joint names in the data for the websocket.
         self.joint_name_prefix = "panda_"
         
         # Name of initial joint configuration - see xml
@@ -75,7 +68,7 @@ class MuJocoBackendServer:
     def runServer(self):
         """
         Start server.
-        Need to be executed using asyncrio: asyncio.run(server.runServer())
+        Need to be executed using asyncio: asyncio.run(server.runServer())
         """
         assert mujoco.__version__ >= "3.1.0", "Please upgrade to mujoco 3.1.0 or later."
         print(">> Server is runnung and waiting for the client")
@@ -83,6 +76,8 @@ class MuJocoBackendServer:
         # Initialize robot values
         self.setupRobotConfigs()
 
+        # Code is waiting here until a client connects. Then the function self.serverExecutable is executed.
+        # If the client disconnects the function stops and starts again if a new client connects.
         start_server = websockets.serve(self.serverExecutable, self.host, self.port)
         
         asyncio.get_event_loop().run_until_complete(start_server)
@@ -134,7 +129,6 @@ class MuJocoBackendServer:
         Main behavior function for the server - currently only publishing demo data
         Function is executed when a client connects to the server.
         """
-
         print(">> Server listening on Port " + str(self.port))
 
         num_joints = len(self.joint_names)
@@ -147,25 +141,24 @@ class MuJocoBackendServer:
         #    show_left_ui=False,
         #    show_right_ui=False,
         #)
-
-
-
         #with simViewer as viewer:
+
+
         # Reset the simulation.
         mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
         
         # Reset the free camera.
         #mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
-
         # Enable site frame visualization.
         #viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
-        
-        websocket_open = True
         #while viewer.is_running():
+
+        websocket_open = True
+        # Simulation Loop
         while websocket_open:
             step_start = time.time()
 
-            # Get motion function
+            # Get demo motion function
             self.data.mocap_pos[self.mocap_id, 0:2] = circular_motion(self.data.time, 0.1, 0.5, 0.0, 0.5)
 
             # Spatial velocity (aka twist).
@@ -203,17 +196,17 @@ class MuJocoBackendServer:
             self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
             mujoco.mj_step(self.model, self.data)
 
-            #viewer.sync()
+            #viewer.sync() # used for local visualisation
             time_until_next_step = self.dt - (time.time() - step_start)
             if time_until_next_step > 0:
                 await asyncio.sleep(time_until_next_step)
 
-            # Transform array to send via websockets
+            # Transform joint postions array to publish via websocket and catch disconnection errors
             q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)
 
             try:
                 await websocket.send(q_string)
-                print(q_string)
+                # print(q_string)
 
             except websockets.exceptions.ConnectionClosedOK:
                 print("Connection closed - OK")
@@ -236,5 +229,5 @@ class MuJocoBackendServer:
 
 
 if __name__ == "__main__":
-    server = MuJocoBackendServer()
+    server = MuJocoSimulation()
     server.runServer()
