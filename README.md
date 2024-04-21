@@ -1,55 +1,74 @@
-# MuJoCo Backend Server
 
-MVP Version of our backend using MuJoCo
+<p align="center">
+  <a href="https://www.openroboticmetaverse.org">
+    <img alt="orom" src="https://raw.githubusercontent.com/openroboverse/knowledge-base/main/docs/assets/icon.png" width="100" />
+  </a>
+</p>
+<h1 align="center">
+  🤖 Open Robotic Metaverse MVP - Robotics Platform 🌐
+</h1>
 
-## Start Server
 
+## Overview 🔍
+
+This project serves as the MVP (Minimum Viable Product) 🚀 for a larger vision aimed at developing a robotic metaverse. Utilizing a combination of modern web technologies, this platform allows users to interact with robots through a web browser, fostering a unique and interactive environment.
+
+## Technology Stack 🛠️
+
+- **Simulation**: Developed using the Mujoco physics engine
+
+
+## Setup ⚙️
+
+1. Clone the repo:
 ```bash
-docker compose build
+git clone https://github.com/openroboticmetaverse/mvp_mujoco_simulation.git
+```
+
+2. Run container:
+```bash
+cd mvp_mujoco_simulation
 ```
 ```bash
-docker compose up
+docker compose up -d
 ```
 
-Open a new terminal and open bash of container:
+## Start the Simulation 💻
+
+Open a console in the container:
 ```bash
 docker exec -it mvp_simulation bash
 ```
-Go to src folder:
+
+Start the simulation:
 ```bash
 cd src
 ```
-And run server
 ```bash
 python3 mujoco_simulation.py
 ```
 
-## Run Test Client
-Open a new terminal and open bash of container:
+## Test the Simulation 💻
+
+Open a console in the container:
 ```bash
 docker exec -it mvp_simulation bash
 ```
-Go to src folder:
+
+Start a test client to see if the simulation websocket is working:
 ```bash
 cd src
 ```
-And run server
 ```bash
 python3 test_client.py
 ```
+You should be able to see the datastream printed out in the console, in which you executed the _test_client.py_. After a short time the script stops, now you should see the message "Connection closed - OK" in the console of the simulation.
 
-## Debugging
-In case you get the error: 
-```bash
-Authorization required, but no authorization protocol specified
-/usr/local/lib/python3.10/dist-packages/glfw/__init__.py:916: GLFWError: (65544) b'X11: Failed to open display :0'
-  warnings.warn(message, GLFWError)
-ERROR: could not initialize GLFW
-```
-Try to run ```xhost +``` before executing the server.
-Also check if your display variable is set correctly inside the container by running ```echo $DISPLAY```
+
+## Next Steps
+Check out the [webapp](https://github.com/openroboticmetaverse/mvp-webapp), which is the other part of our mvp. To see the simulation running in your browser, follow the instructions and start the frontend (there is currently no need to run the backend).
+
+
 
 ## Acknowledgements
-Kinematic calculations are taken from [Kevin Zakka](https://github.com/kevinzakka/mjctrl/).
-Robot models are taken from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie).
-
+Kinematic calculations are taken from [Kevin Zakka](https://github.com/kevinzakka/mjctrl/) and the robot models are taken from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie).
