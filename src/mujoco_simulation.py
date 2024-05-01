@@ -6,7 +6,7 @@ import asyncio
 import websockets
 
 from helpers import create_output_string
-from motion_functions import circular_motion
+from motion_functions import circular_motion, clifford_attractor
 
 
 class MuJocoSimulation:
@@ -159,7 +159,13 @@ class MuJocoSimulation:
             step_start = time.time()
 
             # Get demo motion function
-            self.data.mocap_pos[self.mocap_id, 0:2] = circular_motion(self.data.time, 0.1, 0.5, 0.0, 0.5)
+            a = 1.5
+            b = -1.8
+            c = 1.6
+            d = 0.9
+            self.data.mocap_pos[self.mocap_id, 0:3] = clifford_attractor(self.data.time, a, b, c, d)
+            #self.data.mocap_pos[self.mocap_id, 0:3] = np.array([0.514, 0.55, 0.5])
+            #self.data.mocap_pos[self.mocap_id, 0:2] = circular_motion(self.data.time, 0.1, 0.5, 0.0, 0.5)
 
             # Spatial velocity (aka twist).
             dx = self.data.mocap_pos[self.mocap_id] - self.data.site(self.site_id).xpos
