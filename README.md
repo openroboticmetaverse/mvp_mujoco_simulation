@@ -1,4 +1,3 @@
-
 <p align="center">
   <a href="https://www.openroboticmetaverse.org">
     <img alt="orom" src="https://raw.githubusercontent.com/openroboverse/knowledge-base/main/docs/assets/icon.png" width="100" />
@@ -8,67 +7,78 @@
   🤖 open robotic metaverse mvp - robotics platform 🌐
 </h1>
 
-
 ## Overview 🔍
 
-This project serves as the MVP (Minimum Viable Product) 🚀 for a larger vision aimed at developing a robotic metaverse. Utilizing a combination of modern web technologies, this platform allows users to interact with robots through a web browser, fostering a unique and interactive environment.
+This branch serves as an introduction to MuJoCo to familiarise new devs with its concepts.
 
 ## Technology Stack 🛠️
 
 - **Simulation**: Developed using the Mujoco physics engine
 
-
 ## Setup ⚙️
 
+### Cloning the Repository
+
 1. Clone the repo:
-```bash
-git clone https://github.com/openroboticmetaverse/mvp_mujoco_simulation.git
-```
+   ```bash
+   git clone https://github.com/openroboticmetaverse/mvp_mujoco_simulation.git
+   ```
+2. Navigate to the project directory:
 
-2. Run container:
-```bash
-cd mvp_mujoco_simulation
-```
-```bash
-docker compose up -d
-```
+   ```bash
+   cd mvp_mujoco_simulation
+   ```
 
-## Start the Simulation 💻
+3. Check out the "tutorial" branch:
+   ```bash
+   git checkout tutorial
+   ```
 
-Open a console in the container:
-```bash
-docker exec -it mvp_simulation bash
-```
+### Setting Up a Virtual Environment
 
-Start the simulation:
-```bash
-cd src
-```
-```bash
-python3 mujoco_simulation.py
-```
+2. Navigate to the project directory:
 
-## Test the Websocket 💻
+   ```bash
+   cd mvp_mujoco_simulation
+   ```
 
-Open a console in the container:
-```bash
-docker exec -it mvp_simulation bash
-```
+3. Create a virtual environment:
 
-Start a test client to see if the simulation websocket is working:
-```bash
-cd src
-```
-```bash
-python3 test_client.py
-```
-You should be able to see the datastream printed out in the console, in which you executed the _test_client.py_. After a short time the script stops, now you should see the message "Connection closed - OK" in the console of the simulation.
+   ```bash
+   python3 -m venv mvp_mujoco
+   ```
 
+4. Activate the virtual environment:
+
+   ```bash
+   source mvp_mujoco/bin/activate
+   ```
+
+### Installing Dependencies
+
+5. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Running the Simulation Locally 💻
+
+### Starting the Simulation
+
+6. Run the simulation script:
+   ```bash
+   cd src
+   ```
+   ```bash
+   python mujoco_simulation.py
+   ```
+
+You should see the MuJoCo simulation running and visualized locally.
 
 ## Next Steps
+
 Check out the [webapp](https://github.com/openroboticmetaverse/mvp-webapp), which is the other part of our mvp. To see the simulation running in your browser, follow the instructions and start the frontend (there is currently no need to run the backend).
 
-
-
 ## Acknowledgements
+
 Kinematic calculations are taken from [Kevin Zakka](https://github.com/kevinzakka/mjctrl/) and the robot models are taken from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie).
