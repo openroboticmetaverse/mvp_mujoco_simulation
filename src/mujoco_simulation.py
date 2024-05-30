@@ -2,6 +2,7 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 import time
+import argparse
 from motion_functions import circular_motion, clifford_attractor
 
 class MuJocoSimulation:
@@ -9,7 +10,7 @@ class MuJocoSimulation:
     Class for the Mujoco Simulation.
     """
     
-    def __init__(self):
+    def __init__(self, robot_type):
         # Integration timestep in seconds. This corresponds to the amount of time the joint
         # velocities will be integrated for to obtain the desired joint positions. 
         # Source values: 6-DoF robot: 1.0, 7-DoF robot: 0.1
@@ -37,21 +38,31 @@ class MuJocoSimulation:
         # Maximum allowable joint velocity in rad/s.
         self.max_angvel = 0.785
 
-        # Define path to robot xml file
-            # UR5e - "universal_robots_ur5e/scene.xml"
-            # Panda - "franka_emika_panda/scene.xml" 
-        self.robot_path = "../config/franka_emika_panda/scene.xml"
+        # Robot type configuration
+        self.robot_type = robot_type
+        self.configure_robot(robot_type)
 
-        # Define joint names of the robot. They have to match the names of the urdf-file.
-            # UR5e - ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
-            # Panda - ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
-        self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
-
-        # Used as prefix of the joint names in the data for the websocket.
-        self.joint_name_prefix = "panda_"
-        
-        # Name of initial joint configuration - see xml
-        self.name_home_pose = "home"
+    def configure_robot(self, robot_type):
+        """
+        Configure robot-specific settings.
+        """
+        if robot_type == "kuka":
+            self.robot_path = "../config/kuka_iiwa_14/scene.xml"
+            self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+            self.joint_name_prefix = "kuka_"
+            self.name_home_pose = "home"
+        elif robot_type == "franka":
+            self.robot_path = "../config/franka_emika_panda/scene.xml"
+            self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+            self.joint_name_prefix = "panda_"
+            self.name_home_pose = "home"
+        elif robot_type == "ur5e":
+            self.robot_path = "../config/universal_robots_ur5e/scene.xml"
+            self.joint_names = ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
+            self.joint_name_prefix = "ur5e_"
+            self.name_home_pose = "home"
+        else:
+            raise ValueError(f"Unsupported robot type: {robot_type}")
 
     def setupRobotConfigs(self):
         """
@@ -164,5 +175,9 @@ class MuJocoSimulation:
 
 
 if __name__ == "__main__":
-    simulation = MuJocoSimulation()
+    parser = argparse.ArgumentParser(description="Run MuJoCo simulation for different robots.")
+    parser.add_argument("--robot", type=str, choices=["kuka", "franka", "ur5e"], required=True, help="Type of robot to simulate")
+    args = parser.parse_args()
+
+    simulation = MuJocoSimulation(args.robot)
     simulation.runSimulation()
