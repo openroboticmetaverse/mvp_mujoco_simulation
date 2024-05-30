@@ -70,8 +70,9 @@ This branch serves as an introduction to MuJoCo to familiarise new devs with its
    cd src
    ```
    ```bash
-   python mujoco_simulation.py
+    python3 mujoco_simulation.py --robot <robot_name>
    ```
+   Replace `<robot_name>` with `kuka`, `franka`, or `ur5e`.
 
 You should see the MuJoCo simulation running and visualized locally.
 
