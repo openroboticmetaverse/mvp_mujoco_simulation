@@ -4,6 +4,8 @@ import numpy as np
 import time
 import argparse
 from motion_functions import circular_motion, clifford_attractor
+import pandas as pd
+import json
 
 class MuJocoSimulation:
     """
@@ -100,12 +102,51 @@ class MuJocoSimulation:
         self.site_quat_conj = np.zeros(4)
         self.error_quat = np.zeros(4)
 
-    def runSimulation(self):
+    def save_simulation(self, simulation_data):
+        """
+        Extract all the simulation data from mjdata object and save them as a dictionary with the name of each simulation variable as its name. 
+        The data is then appended to the siumlation_data object and saved as time series
+
+        Parameters:
+        simulation_data (dict): a dictionary containing the simulation data saved as time series
+
+        Returns:
+        dict: The updated simulation data
+        """
+        # Collect all MjData attributes at this timestep
+        timestep_data = self.collect_mjdata_attributes()
+        
+        # Add the current simulation time
+        timestep_data['time'] = self.data.time
+        
+        # Append the collected data to the list
+        simulation_data.append(timestep_data)
+        return simulation_data
+    
+    def collect_mjdata_attributes(self):
+        """
+        Dynamically extract all the attribues of the simulation data from mjdata to a dictionary.
+        """
+        attributes = {}
+        for attr_name in dir(self.data):
+            if not attr_name.startswith('_'):
+                attr_value = getattr(self.data, attr_name)
+                try:
+                    if isinstance(attr_value, np.ndarray):
+                        attributes[attr_name] = attr_value.tolist()  # Convert numpy arrays to lists
+                    else:
+                        attributes[attr_name] = attr_value
+                except Exception as e:
+                    print(f"Could not process attribute {attr_name}: {e}")
+        return attributes
+    
+    def runSimulation(self, save_simulation_data=False):
         """
         Run the simulation and visualize it locally.
         """
         self.setupRobotConfigs()
-        
+        if save_simulation_data:
+            simulation_data = []
         # Launch the viewer.
         simViewer = mujoco.viewer.launch_passive(
             model=self.model,
@@ -172,12 +213,28 @@ class MuJocoSimulation:
                 time_until_next_step = self.dt - (time.time() - step_start)
                 if time_until_next_step > 0:
                     time.sleep(time_until_next_step)
+                
+                # save simulation data
+                if save_simulation_data:
+                    simulation_data = self.save_simulation(simulation_data)
+                    
+            if save_simulation_data:
+                # Convert the list of dictionaries to a Pandas DataFrame
+                df = pd.DataFrame(simulation_data)
 
+                # Convert DataFrame columns that are lists to JSON strings
+                for column in df.columns:
+                    if isinstance(df[column][0], list):
+                        df[column] = df[column].apply(json.dumps)
+
+                # Save the DataFrame to a CSV file
+                df.to_csv('simulation_data_'+self.robot_type+'.csv', index=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run MuJoCo simulation for different robots.")
     parser.add_argument("--robot", type=str, choices=["kuka", "franka", "ur5e"], required=True, help="Type of robot to simulate")
+    parser.add_argument('-s', action='store_true', help='Save simulation data')
     args = parser.parse_args()
 
     simulation = MuJocoSimulation(args.robot)
-    simulation.runSimulation()
+    simulation.runSimulation(args.s)
