@@ -4,3 +4,5 @@ mediapy
 tqdm
 mujoco
 ffmpeg-python
+json
+pandas
