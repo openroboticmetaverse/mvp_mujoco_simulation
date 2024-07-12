@@ -4,7 +4,7 @@ import numpy as np
 import time
 import asyncio
 import websockets
-
+import os
 from helpers import create_output_string
 from motion_functions import circular_motion, clifford_attractor
 
@@ -17,7 +17,8 @@ class MuJocoSimulation:
     
     def __init__(self):
         # Websocket Settings
-        self.host = "localhost"
+        # self.host = "localhost"
+        self.host = "0.0.0.0"
         self.port = 8081
 
         # Integration timestep in seconds. This corresponds to the amount of time the joint
@@ -50,7 +51,7 @@ class MuJocoSimulation:
         # Define path to robot xml file
             # UR5e - "universal_robots_ur5e/scene.xml"
             # Panda - "franka_emika_panda/scene.xml" 
-        self.robot_path = "franka_emika_panda/scene.xml"
+        self.robot_path = "/sim_ws/config/franka_emika_panda/scene.xml"
 
         # Define joint names of the robot. They have to match the names of the urdf-file.
             # UR5e - ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
@@ -71,7 +72,7 @@ class MuJocoSimulation:
         Need to be executed using asyncio: asyncio.run(server.runServer())
         """
         assert mujoco.__version__ >= "3.1.0", "Please upgrade to mujoco 3.1.0 or later."
-        print(">> Server is runnung and waiting for the client")
+        print(f">> Server is runnung and waiting for the client at {self.host}:{self.port}")
 
         # Initialize robot values
         self.setupRobotConfigs()
@@ -92,7 +93,7 @@ class MuJocoSimulation:
         Setup robot configurations
         """
         # Load the model and data.
-        self.model = mujoco.MjModel.from_xml_path("../config/" + self.robot_path)
+        self.model = mujoco.MjModel.from_xml_path(self.robot_path)
         self.data = mujoco.MjData(self.model)
 
         self.model.body_gravcomp[:] = float(self.gravity_compensation)
