@@ -9,7 +9,7 @@
 
 ## Overview 🔍
 
-This branch serves as an introduction to MuJoCo to familiarise new devs with its concepts.
+This branch serves as preliminary solution for generating an xml file combining multiple models using scene coordinates. For now, the script is only able to combine models of the same type.
 
 ## Technology Stack 🛠️
 
@@ -23,18 +23,6 @@ This branch serves as an introduction to MuJoCo to familiarise new devs with its
    ```bash
    git clone https://github.com/openroboticmetaverse/mvp_mujoco_simulation.git
    ```
-2. Navigate to the project directory:
-
-   ```bash
-   cd mvp_mujoco_simulation
-   ```
-
-3. Check out the "tutorial" branch:
-   ```bash
-   git checkout tutorial
-   ```
-
-### Setting Up a Virtual Environment
 
 2. Navigate to the project directory:
 
@@ -42,43 +30,37 @@ This branch serves as an introduction to MuJoCo to familiarise new devs with its
    cd mvp_mujoco_simulation
    ```
 
-3. Create a virtual environment:
+3. Change branch:
 
    ```bash
-   python3 -m venv mvp_mujoco
+   git switch mutli-model_simulation
    ```
 
-4. Activate the virtual environment:
+### Setting Up Docker Container
+
+2. Navigate to the project directory:
 
    ```bash
-   source mvp_mujoco/bin/activate
-   ```
-
-### Installing Dependencies
-
-5. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Running the Simulation Locally 💻
-
-### Starting the Simulation
-
-6. Run the simulation script:
-   ```bash
-   cd src
+   docker compose up -d   
    ```
    ```bash
-    python3 mujoco_simulation.py --robot <robot_name> -s
+   docker exec -it mvp_simulation bash   
+   ```
+   
+### Start Simulation
+   ```bash
+    cd src
+   ```
+   ```bash
+    python3 multi-model_simulation.py --robot <robot_name> -n <number_of_robots>
    ```
    Replace `<robot_name>` with `kuka`, `franka`, or `ur5e`.
-   Set the flag -s if you want to save the simulation data.
+   Replace `<robot_name>` with the number of robots you want shown in the simulation
 You should see the MuJoCo simulation running and visualized locally.
 
 ## Next Steps
 
-Check out the [webapp](https://github.com/openroboticmetaverse/mvp-webapp), which is the other part of our mvp. To see the simulation running in your browser, follow the instructions and start the frontend (there is currently no need to run the backend).
+The next step involves expanding the current solution to host multiple types of robots and objects at the same time.
 
 ## Acknowledgements
 
