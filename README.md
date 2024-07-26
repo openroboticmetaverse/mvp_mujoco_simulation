@@ -55,8 +55,8 @@ This branch serves as preliminary solution for generating an xml file combining 
     python3 multi-model_simulation.py --robot <robot_name> -n <number_of_robots>
    ```
    Replace `<robot_name>` with one of the supported robot models.
-   Replace `<robot_number>` with the number of robots you want shown in the simulation
-   Supported Robot Models: `kuka`, `franka`, `ur5e`, `anymal_b`, `anymal_c`, `cf2`, `boston_d`, `fruitfly`, `aloha`, `cassie`, `franka3`, `google_robot`
+   Replace `<robot_number>` with the number of robots you want shown in the simulation.
+   Supported Robot Models: `kuka`, `franka`, `ur5e`, `anymal_b`, `anymal_c`, `cf2`, `boston_d`, `fruitfly`, `aloha`, `cassie`, `franka3`, `google_robot`.
 You should see the MuJoCo simulation running and visualized locally.
 
 ## Next Steps
