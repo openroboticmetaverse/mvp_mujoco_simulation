@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      - sandys9995-patch-1
+      
 
 jobs:
   build:
