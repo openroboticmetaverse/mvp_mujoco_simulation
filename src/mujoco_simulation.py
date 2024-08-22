@@ -213,7 +213,15 @@ class MuJocoSimulation:
 
             try:
                 await websocket.send(q_string)
-                # print(q_string)
+                
+                # If container receives the req. message 'stop', then stop the current simulation 
+                try:
+                    msg = await asyncio.wait_for(websocket.recv(), timeout=0.1)
+                    if msg == 'stop':
+                        websocket_open = False
+                        self.server.close()
+                except asyncio.TimeoutError:
+                    pass
 
             except websockets.exceptions.ConnectionClosedOK:
                 print("Connection closed - OK")
