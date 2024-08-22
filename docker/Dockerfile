@@ -7,8 +7,9 @@ RUN apt-get install -y x11-apps x11-utils libx11-dev \
                         git
 
 COPY ./requirements.txt /sim_ws/requirements.txt
+COPY ./src /sim_ws/src
 WORKDIR /sim_ws
 
-RUN pip install -r /sim_ws/requirements.txt \
-    python3 /sim_ws/src/mujoco_simulation.py
+RUN pip install -r requirements.txt
+CMD ["python3", "src/mujoco_simulation.py"]
 
