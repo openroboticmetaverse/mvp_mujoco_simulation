@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  mvp_frontend:
+    container_name: mvp_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    working_dir: /var/www/html/app/
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./frontend/:/var/www/html/app
+    command: ["npm", "run", "dev"]
+    tty: true
+
+  mvp_backend:
+    container_name: mvp_backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8001:80"
+    volumes:
+      - ./backend:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+    depends_on:
+      - simulation
+
+  simulation:
+    container_name: simulation
+    build:
+      context: ./simulation
+      dockerfile: Dockerfile
+    command: ["python3", "./src/mujoco_simulation.py", "--robot", "franka"]
+    volumes:
+      - ./simulation:/app
