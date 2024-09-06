@@ -165,73 +165,18 @@ class MuJocoSimulation:
             mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
             # Enable site frame visualization.
             viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
-            while viewer.is_running():
+
+            df = pd.read_csv('simulation_data_ur5e.csv')
+            for ctrl in df['ctrl']:
                 step_start = time.time()
-
-                # Get demo motion function
-                a = 1.5
-                b = -1.8
-                c = 1.6
-                d = 0.9
-                self.data.mocap_pos[self.mocap_id, 0:3] = clifford_attractor(self.data.time, a, b, c, d)
-                #self.data.mocap_pos[self.mocap_id, 0:3] = np.array([0.514, 0.55, 0.5])
-                #self.data.mocap_pos[self.mocap_id, 0:2] = circular_motion(self.data.time, 0.1, 0.5, 0.0, 0.5)
-
-                # Spatial velocity (aka twist).
-                dx = self.data.mocap_pos[self.mocap_id] - self.data.site(self.site_id).xpos
-                self.twist[:3] = self.Kpos * dx / self.integration_dt
-                mujoco.mju_mat2Quat(self.site_quat, self.data.site(self.site_id).xmat)
-                mujoco.mju_negQuat(self.site_quat_conj, self.site_quat)
-                mujoco.mju_mulQuat(self.error_quat, self.data.mocap_quat[self.mocap_id], self.site_quat_conj)
-                mujoco.mju_quat2Vel(self.twist[3:], self.error_quat, 1.0)
-                self.twist[3:] *= self.Kori / self.integration_dt
-
-                # Jacobian
-                mujoco.mj_jacSite(self.model, self.data, self.jac[:3], self.jac[3:], self.site_id)
-
-                # Solve for joint velocities: J * dq = twist using damped least squares.
-                dq = np.linalg.solve(self.jac.T @ self.jac + self.diag, self.jac.T @ self.twist)
-
-                # Nullspace control biasing joint velocities towards the home configuration.
-                if len(self.joint_names) == 7:
-                    dq += (self.eye - np.linalg.pinv(self.jac) @ self.jac) @ (self.Kn * (self.q0 - self.data.qpos[self.dof_ids]))
-
-                # Clamp maximum joint velocity.
-                dq_abs_max = np.abs(dq).max()
-                if dq_abs_max > self.max_angvel:
-                    dq *= self.max_angvel / dq_abs_max
-
-                # Integrate joint velocities to obtain joint positions - copying is important
-                q = self.data.qpos.copy()
-
-                # Adds a vector in the format of qvel (scaled by dt) to a vector in the format of qpos.
-                mujoco.mj_integratePos(self.model, q, dq, self.integration_dt)
-                np.clip(q, *self.model.jnt_range.T, out=q)
-
-                # Set the control signal and step the simulation.
-                self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
+                self.data.ctrl = json.loads(ctrl)
                 mujoco.mj_step(self.model, self.data)
 
                 viewer.sync() # used for local visualisation
                 time_until_next_step = self.dt - (time.time() - step_start)
                 if time_until_next_step > 0:
                     time.sleep(time_until_next_step)
-                
-                # save simulation data
-                if save_simulation_data:
-                    simulation_data = self.save_simulation(simulation_data)
-                    
-            if save_simulation_data:
-                # Convert the list of dictionaries to a Pandas DataFrame
-                df = pd.DataFrame(simulation_data)
-
-                # Convert DataFrame columns that are lists to JSON strings
-                for column in df.columns:
-                    if isinstance(df[column][0], list):
-                        df[column] = df[column].apply(json.dumps)
-
-                # Save the DataFrame to a CSV file
-                df.to_csv('simulation_data_'+self.robot_type+'.csv', index=False)
+            
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run MuJoCo simulation for different robots.")
