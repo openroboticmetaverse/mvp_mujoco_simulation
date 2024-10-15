@@ -1,0 +1,87 @@
+<mujoco model="cr5_robot">
+    <compiler angle="radian" />
+    <size njmax="500" nconmax="100" />
+    <asset>
+        <mesh name="base_link" file="base_link.stl" />
+        <mesh name="Link1" file="Link1.stl" />
+        <mesh name="Link2" file="Link2.stl" />
+        <mesh name="Link3" file="Link3.stl" />
+        <mesh name="Link4" file="Link4.stl" />
+        <mesh name="Link5" file="Link5.stl" />
+        <mesh name="Link6" file="Link6.stl" />
+    </asset>
+    <worldbody>
+        <geom type="mesh" rgba="0 0 0 1" mesh="base_link" />
+        <body name="Link1" pos="0 0 0.147">
+            <inertial pos="-8.7268e-07 -0.0032576 -0.0076748" quat="0.615786 0.347596 -0.347595 0.615761" mass="1.6123" diaginertia="0.00354972 0.0029122 0.00255298" />
+            <joint name="joint1" pos="0 0 0" axis="0 0 1" limited="true" range="-3.14 3.14" />
+            <geom type="mesh" rgba="1 1 1 1" mesh="Link1" />
+            <body name="Link2" pos="0 0 0" quat="0.499998 0.5 0.5 -0.500002">
+                <inertial pos="-0.21351 -1.3842e-06 0.14252" quat="8.38738e-05 0.707093 5.56955e-05 0.707121" mass="5.5186" diaginertia="0.028294 0.027553 0.0085919" />
+                <joint name="joint2" pos="0 0 0" axis="0 0 1" limited="true" range="-3.14 3.14" />
+                <geom type="mesh" rgba="1 1 1 1" mesh="Link2" />
+                <body name="Link3" pos="-0.427 0 0">
+                    <inertial pos="-0.15231 -1.4079e-07 0.022693" quat="0 0.714013 0 0.700132" mass="2.8536" diaginertia="0.00955763 0.0092967 0.00325837" />
+                    <joint name="joint3" pos="0 0 0" axis="0 0 1" limited="true" range="-2.86 2.86" />
+                    <geom type="mesh" rgba="1 1 1 1" mesh="Link3" />
+                    <body name="Link4" pos="-0.357 0 0.141" quat="0.707105 0 0 -0.707108">
+                        <inertial pos="-3.2386e-07 -0.002077 -0.0015548" quat="0.653428 0.270173 -0.270153 0.653495" mass="0.67058" diaginertia="0.000764755 0.00066939 0.000543135" />
+                        <joint name="joint4" pos="0 0 0" axis="0 0 1" limited="true" range="-3.14 3.14" />
+                        <geom type="mesh" rgba="1 1 1 1" mesh="Link4" />
+                        <body name="Link5" pos="0 -0.116 0" quat="0.707105 0.707108 0 0">
+                            <inertial pos="-3.7738e-07 -0.0045777 -0.0012971" quat="0.27195 0.652753 -0.652695 0.271929" mass="0.7269" diaginertia="0.000832194 0.00073069 0.000593666" />
+                            <joint name="joint5" pos="0 0 0" axis="0 0 1" limited="true" range="-3.14 3.14" />
+                            <geom type="mesh" rgba="1 1 1 1" mesh="Link5" />
+                            <body name="Link6" pos="0 0.105 0" quat="0.707105 -0.707108 0 0">
+                                <inertial pos="5.0777e-11 9.3774e-05 -0.019285" quat="-0.000970713 0.707106 -0.000970713 0.707106" mass="0.15789" diaginertia="0.00012951 7.91676e-05 7.8045e-05" />
+                                <joint name="joint6" pos="0 0 0" axis="0 0 1" limited="true" range="-6.28 6.28" />
+                                <geom type="mesh" rgba="1 1 1 1" mesh="Link6" />
+                                <site pos="0 0 0.045" name="attachment_site"/>
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <default>
+    <default class="ur5e">
+        <default class="visual">
+            <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+        </default>
+        <default class="collision">
+            <geom type="capsule" group="3"/>
+            <default class="eef_collision">
+            <geom type="cylinder"/>
+            </default>
+        </default>
+        <joint axis="0 1 0" range="-6.28319 6.28319"/>
+        <default class="joint_limited">
+            <joint range="-3.1415 3.1415"/>
+        </default>
+        <default class="position">
+            <default class="position_1245">
+            <position ctrlrange="-3.1415 3.1415" kp="2000" kv="100" forcerange="-1000 1000"/>
+            </default>
+            <default class="position_3">
+            <position ctrlrange="-2.86 2.86" kp="2000" kv="100" forcerange="-1000 1000"/>
+            </default>
+        </default>
+    </default>
+    </default>
+    <actuator>
+        <position class="position_1245" name="joint1" joint="joint1"/>
+        <position class="position_1245" name="joint2" joint="joint2"/>
+        <position class="position_1245" name="joint3" joint="joint3"/>
+        <position class="position_1245" name="joint4" joint="joint4"/>
+        <position class="position_1245" name="joint5" joint="joint5"/>
+        <motor name="joint6" joint="joint6" ctrlrange="-6.28 6.28" forcerange="-75 75"/>
+    </actuator>
+
+
+    <keyframe>
+        <key name="home" qpos="0 0 0 0 0 0" ctrl="0 0 0 0 0 0"/>
+    </keyframe>
+
+</mujoco>

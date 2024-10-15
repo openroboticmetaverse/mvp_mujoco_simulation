@@ -4,4 +4,3 @@ mediapy
 tqdm
 mujoco
 ffmpeg-python
-pandas
