@@ -1,0 +1,12 @@
+Tue Oct 15 18:33:48 2024
+WARNING: mju_openResource: unknown file '/sim_ws/config/franka_emika_panda/scene.xml'
+
+Tue Oct 15 18:35:18 2024
+WARNING: mju_openResource: unknown file '/sim_ws/config/franka_emika_panda/scene.xml'
+
+Tue Oct 15 18:37:20 2024
+WARNING: mju_openResource: unknown file '../config/franka_emika_panda/scene.xml'
+
+Thu Oct 17 22:05:28 2024
+WARNING: mju_openResource: unknown file '/sim_ws/config/franka_emika_panda/scene.xml'
+

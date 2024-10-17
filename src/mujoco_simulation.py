@@ -8,7 +8,7 @@ import os
 from helpers import create_output_string
 from motion_functions import circular_motion, clifford_attractor
 import argparse
-import mtx
+from mtx import mtx_
 
 class MuJocoSimulation:
     """
@@ -52,7 +52,7 @@ class MuJocoSimulation:
         # Define path to robot xml file
             # UR5e - "universal_robots_ur5e/scene.xml"
             # Panda - "franka_emika_panda/scene.xml" 
-        self.robot_path = "/sim_ws/config/franka_emika_panda/scene.xml"
+        self.robot_path = "/home/amine/Documents/orom/mvp_mujoco_simulation/config/franka_emika_panda/scene.xml"
 
         # Define joint names of the robot. They have to match the names of the urdf-file.
             # UR5e - ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
@@ -88,7 +88,7 @@ class MuJocoSimulation:
         asyncio.get_event_loop().run_forever()
         
         if self.for_mtx:
-            mtx.main(self)
+            mtx_.main(self)
 
         print(">> Server was stopped")
 
@@ -243,7 +243,7 @@ class MuJocoSimulation:
                     await self.websocket.close()
                     break
 
-    def handle_control_from_mtx(q_from_mtx):
+    def handle_control_from_mtx(self,q_from_mtx):
         self.data.ctrl[self.actuator_ids] = q_from_mtx[self.dof_ids]
         mujoco.mj_step(self.model, self.data)
 
