@@ -7,7 +7,8 @@ import websockets
 import os
 from helpers import create_output_string
 from motion_functions import circular_motion, clifford_attractor
-
+import argparse
+import mtx
 
 class MuJocoSimulation:
     """
@@ -15,7 +16,7 @@ class MuJocoSimulation:
     Currently it is only publishing demo data!
     """
     
-    def __init__(self):
+    def __init__(self, for_mtx):
         # Websocket Settings
         # self.host = "localhost"
         self.host = "0.0.0.0"
@@ -64,6 +65,8 @@ class MuJocoSimulation:
         # Name of initial joint configuration - see xml
         self.name_home_pose = "home"
 
+        #case if the control is obtained via motorcortex api
+        self.for_mtx = for_mtx
 
 
     def runServer(self):
@@ -84,6 +87,9 @@ class MuJocoSimulation:
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
         
+        if self.for_mtx:
+            mtx.main(self)
+
         print(">> Server was stopped")
 
 
@@ -123,43 +129,8 @@ class MuJocoSimulation:
         self.site_quat_conj = np.zeros(4)
         self.error_quat = np.zeros(4)
 
-        
-
-    async def serverExecutable(self, websocket, path):
-        """
-        Main behavior function for the server - currently only publishing demo data
-        Function is executed when a client connects to the server.
-        """
-        print(">> Server listening on Port " + str(self.port))
-
-        num_joints = len(self.joint_names)
-
-        # TODO: Implement differentation when visualisation should be opened for debugging and when it 
-        # should run in the backend to save computational power
-        #simViewer = mujoco.viewer.launch_passive(
-        #    model=self.model,
-        #    data=self.data,
-        #    show_left_ui=False,
-        #    show_right_ui=False,
-        #)
-        #with simViewer as viewer:
-
-
-        # Reset the simulation.
-        mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
-        
-        # Reset the free camera.
-        #mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
-        # Enable site frame visualization.
-        #viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
-        #while viewer.is_running():
-
-        websocket_open = True
-        # Simulation Loop
-        while websocket_open:
-            step_start = time.time()
-
-            # Get demo motion function
+    def build_q_from_mjc(self):
+        # Get demo motion function
             a = 1.5
             b = -1.8
             c = 1.6
@@ -198,43 +169,118 @@ class MuJocoSimulation:
             # Adds a vector in the format of qvel (scaled by dt) to a vector in the format of qpos.
             mujoco.mj_integratePos(self.model, q, dq, self.integration_dt)
             np.clip(q, *self.model.jnt_range.T, out=q)
+            return q
+        
 
-            # Set the control signal and step the simulation.
-            self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
-            mujoco.mj_step(self.model, self.data)
+    async def serverExecutable(self, websocket, path):
+        """
+        Main behavior function for the server - currently only publishing demo data
+        Function is executed when a client connects to the server.
+        """
+        print(">> Server listening on Port " + str(self.port))
 
-            #viewer.sync() # used for local visualisation
-            time_until_next_step = self.dt - (time.time() - step_start)
-            if time_until_next_step > 0:
-                await asyncio.sleep(time_until_next_step)
+        num_joints = len(self.joint_names)
 
-            # Transform joint postions array to publish via websocket and catch disconnection errors
-            q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)
+        # TODO: Implement differentation when visualisation should be opened for debugging and when it 
+        # should run in the backend to save computational power
+        #simViewer = mujoco.viewer.launch_passive(
+        #    model=self.model,
+        #    data=self.data,
+        #    show_left_ui=False,
+        #    show_right_ui=False,
+        #)
+        #with simViewer as viewer:
 
-            try:
-                await websocket.send(q_string)
-                # print(q_string)
+        # Reset the simulation.
+        mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
+        
+        # Reset the free camera.
+        #mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
+        # Enable site frame visualization.
+        #viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
+        #while viewer.is_running():
 
-            except websockets.exceptions.ConnectionClosedOK:
-                print("Connection closed - OK")
-                websocket_open = False
-                await websocket.close()
-                break
+        self.websocket = websocket # quick fix to send q to frontend with mtx
+        websocket_open = True
+        # Simulation Loop
+        while websocket_open:
+            step_start = time.time()
 
-            except websockets.exceptions.ConnectionClosedError:
-                print("Connection closed - Error")
-                websocket_open = False
-                await websocket.close()
-                break
+            if not self.for_mtx:
+                q = self.build_q_from_mjc()
 
-            except Exception as ex:
-                websocket_open = False
-                print(f"{type(ex)} : {ex}")
-                await websocket.close()
-                break
+                # Set the control signal and step the simulation.
+                self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
+                mujoco.mj_step(self.model, self.data)
 
+                #viewer.sync() # used for local visualisation
+                time_until_next_step = self.dt - (time.time() - step_start)
+                if time_until_next_step > 0:
+                    await asyncio.sleep(time_until_next_step)
+
+                # Transform joint postions array to publish via websocket and catch disconnection errors
+                q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)
+
+                try:
+                    await self.websocket.send(q_string)
+                    # print(q_string)
+
+                except websockets.exceptions.ConnectionClosedOK:
+                    print("Connection closed - OK")
+                    websocket_open = False
+                    await self.websocket.close()
+                    break
+
+                except websockets.exceptions.ConnectionClosedError:
+                    print("Connection closed - Error")
+                    websocket_open = False
+                    await self.websocket.close()
+                    break
+
+                except Exception as ex:
+                    websocket_open = False
+                    print(f"{type(ex)} : {ex}")
+                    await self.websocket.close()
+                    break
+
+    def handle_control_from_mtx(q_from_mtx):
+        self.data.ctrl[self.actuator_ids] = q_from_mtx[self.dof_ids]
+        mujoco.mj_step(self.model, self.data)
+
+        q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)    
+        websocket_open = True
+        try:
+            self.websocket.send(q_string)
+            # print(q_string)
+
+        except websockets.exceptions.ConnectionClosedOK:
+            print("Connection closed - OK")
+            websocket_open = False
+            self.websocket.close()
+
+        except websockets.exceptions.ConnectionClosedError:
+            print("Connection closed - Error")
+            websocket_open = False
+            self.websocket.close()
+
+        except Exception as ex:
+            websocket_open = False
+            print(f"{type(ex)} : {ex}")
+            self.websocket.close()
+            
+        if not websocket_open :
+            pass # should raise an exception to stop the websocket 
+
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description="Matrix option parser")
+    parser.add_argument('--for-mtx', action='store_true', help='Set this flag for matrix option')
+
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    server = MuJocoSimulation()
+    args = get_args()
+    server = MuJocoSimulation(for_mtx = args.for_mtx)
     server.runServer()
