@@ -209,7 +209,9 @@ class MuJocoSimulation:
                 await asyncio.sleep(time_until_next_step)
 
             # Transform joint postions array to publish via websocket and catch disconnection errors
-            q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)
+            # Map joint names to the format needed by the client
+            mapped_joint_names = ["Base", "Link1", "Link2", "Link3", "Link4", "Link5", "Link6"]
+            q_string = create_output_string(mapped_joint_names, "", q)
 
             try:
                 await websocket.send(q_string)

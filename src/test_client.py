@@ -2,7 +2,7 @@ import asyncio
 import websockets
 
 async def listen():
-    url = "ws://127.0.0.1:8081"
+    url = "ws://localhost:8081"
     # Connect to the server
     async with websockets.connect(url) as ws:
         # Send a greeting message
