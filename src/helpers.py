@@ -18,8 +18,9 @@ def create_output_string(joint_names, name_prefix, joint_values):
     )
     output_string += "}}"
 
-    return output_string
+    print(output_string)
 
+    return output_string
 
 
 

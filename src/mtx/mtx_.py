@@ -6,6 +6,8 @@ import sys
 # Define the callback function that will be called whenever a message is received
 def callback_generator(mjc_simulator):
     def build_q_from_mtx(parameters):
+        print("Callback")
+        print(parameters)
         q_from_mtx = []
         for cnt in range(0, len(parameters)):
             param = parameters[cnt]
@@ -16,14 +18,18 @@ def callback_generator(mjc_simulator):
             q_from_mtx.append(value)
 
         mjc_simulator.handle_control_from_mtx(q_from_mtx)
+        print(f"Callback, timestamp: {timestamp} value: {q_from_mtx}")
     
     return build_q_from_mtx
+
+def callback(msg):
+    print(msg)
 
 def Initialize_cnx():
     parameter_tree = motorcortex.ParameterTree()
     # Open request and subscribe connection
     try:
-        req, sub = motorcortex.connect("wss://192.168.56.101/5568:5567", 
+        req, sub = motorcortex.connect("wss://192.168.56.101:5568:5567", 
                                        motorcortex.MessageTypes(), parameter_tree,
                                        certificate="mcx.cert.crt", timeout_ms=1000,
                                        login="admin", password="vectioneer")
@@ -36,7 +42,7 @@ def Initialize_cnx():
 
 def main(mujoco_simulator):
     req, sub  = Initialize_cnx()
-    paths = ['root/Control_task/actual_cycle_max']
+    paths = ['root/AxesControl/axesPositionsActual']
     # define the frequency divider that tells the server to publish only every
     # n-th sample. This depends on the update rate of the publisher.
     divider = 100
@@ -56,13 +62,16 @@ def main(mujoco_simulator):
     # Note that this is a non-blocking call, starting a new thread that handles
     # the messages. You should keep the application alive for a s long as you need to
     # receive the messages
-    subscription.notify(callback_generator(mujoco_simulator)) #build the callback
 
+    callback_function = callback_generator(mujoco_simulator)
+    subscription.notify(callback_function) #build the callback
+    #subscription.notify(callback)
     # polling subscription
+
     for i in range(100):
-        value = subscription.read()
-        if value:
-            print(f"Polling, timestamp: {value[0].timestamp} value: {value[0].value}")
+        #value = subscription.read()
+        # if value:
+        #     print(f"Polling, timestamp: {value[0].timestamp} value: {value[0].value}")
         time.sleep(1)
 
 

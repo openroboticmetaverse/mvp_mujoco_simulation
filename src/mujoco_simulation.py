@@ -129,7 +129,7 @@ class MuJocoSimulation:
         self.site_quat_conj = np.zeros(4)
         self.error_quat = np.zeros(4)
 
-    def build_q_from_mjc(self):
+    def build_q_from_mjc(self, num_joints):
         # Get demo motion function
             a = 1.5
             b = -1.8
@@ -179,7 +179,7 @@ class MuJocoSimulation:
         """
         print(">> Server listening on Port " + str(self.port))
 
-        num_joints = len(self.joint_names)
+        num_joints = 6 #len(self.joint_names)
 
         # TODO: Implement differentation when visualisation should be opened for debugging and when it 
         # should run in the backend to save computational power
@@ -206,8 +206,13 @@ class MuJocoSimulation:
         while websocket_open:
             step_start = time.time()
 
+            if self.for_mtx:
+                mtx_.main(self)
+
+            #self.handle_control_from_mtx(self,q_from_mtx)
+
             if not self.for_mtx:
-                q = self.build_q_from_mjc()
+                q = self.build_q_from_mjc(num_joints)
 
                 # Set the control signal and step the simulation.
                 self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
@@ -219,8 +224,10 @@ class MuJocoSimulation:
                     await asyncio.sleep(time_until_next_step)
 
                 # Transform joint postions array to publish via websocket and catch disconnection errors
-                q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)
+                mapped_joint_names = ["Base", "Link1", "Link2", "Link3", "Link4", "Link5", "Link6"]
+                q_string = create_output_string(mapped_joint_names, "", q)
 
+                print(q_string)
                 try:
                     await self.websocket.send(q_string)
                     # print(q_string)
@@ -244,10 +251,12 @@ class MuJocoSimulation:
                     break
 
     def handle_control_from_mtx(self,q_from_mtx):
-        self.data.ctrl[self.actuator_ids] = q_from_mtx[self.dof_ids]
+        print(f"q_from_mtx: {q_from_mtx}")
+        #self.data.ctrl[self.actuator_ids] = q_from_mtx[0][self.dof_ids]
         mujoco.mj_step(self.model, self.data)
 
-        q_string = create_output_string(self.joint_names, self.joint_name_prefix, q)    
+        q_string = create_output_string(self.joint_names, self.joint_name_prefix, q_from_mtx[0])  
+        print(q_string)  
         websocket_open = True
         try:
             self.websocket.send(q_string)
