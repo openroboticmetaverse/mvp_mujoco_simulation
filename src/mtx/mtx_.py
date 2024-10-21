@@ -19,6 +19,7 @@ def callback_generator(mjc_simulator):
 
         mjc_simulator.handle_control_from_mtx(q_from_mtx)
         print(f"Callback, timestamp: {timestamp} value: {q_from_mtx}")
+        print("finished defining the function")
     
     return build_q_from_mtx
 

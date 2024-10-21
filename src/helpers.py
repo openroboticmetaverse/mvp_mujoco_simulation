@@ -4,6 +4,9 @@ def create_output_string(joint_names, name_prefix, joint_values):
     name_prefix input is put before the joint_name.
     """
 
+    # print("len joint names", len(joint_names))
+    # print("len joint_values", len(joint_values))
+
     if len(joint_names) != len(joint_values):
         raise ValueError("Input lists must have the same length")
 

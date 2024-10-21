@@ -52,12 +52,12 @@ class MuJocoSimulation:
         # Define path to robot xml file
             # UR5e - "universal_robots_ur5e/scene.xml"
             # Panda - "franka_emika_panda/scene.xml" 
-        self.robot_path = "/home/amine/Documents/orom/mvp_mujoco_simulation/config/franka_emika_panda/scene.xml"
+        self.robot_path = "/home/amine/Documents/orom/mvp_mujoco_simulation/config/ur5/scene.xml"
 
         # Define joint names of the robot. They have to match the names of the urdf-file.
             # UR5e - ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
             # Panda - ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
-        self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+        self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
         # Used as prefix of the joint names in the data for the websocket.
         self.joint_name_prefix = "panda_"
@@ -183,74 +183,77 @@ class MuJocoSimulation:
 
         # TODO: Implement differentation when visualisation should be opened for debugging and when it 
         # should run in the backend to save computational power
-        #simViewer = mujoco.viewer.launch_passive(
-        #    model=self.model,
-        #    data=self.data,
-        #    show_left_ui=False,
-        #    show_right_ui=False,
-        #)
-        #with simViewer as viewer:
+        simViewer = mujoco.viewer.launch_passive(
+           model=self.model,
+           data=self.data,
+           show_left_ui=False,
+           show_right_ui=False,
+        )
+        with simViewer as viewer:
 
-        # Reset the simulation.
-        mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
-        
-        # Reset the free camera.
-        #mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
-        # Enable site frame visualization.
-        #viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
-        #while viewer.is_running():
+            # Reset the simulation.
+            mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
+            
+            # Reset the free camera.
+            mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
+            # Enable site frame visualization.
+            viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
+            while viewer.is_running():
 
-        self.websocket = websocket # quick fix to send q to frontend with mtx
-        websocket_open = True
-        # Simulation Loop
-        while websocket_open:
-            step_start = time.time()
+                self.websocket = websocket # quick fix to send q to frontend with mtx
+                websocket_open = True
+                # Simulation Loop
+                while websocket_open:
+                    step_start = time.time()
+                    
 
-            if self.for_mtx:
-                mtx_.main(self)
+                    if self.for_mtx:
+                        mtx_.main(self)
+                        viewer.sync() 
 
-            #self.handle_control_from_mtx(self,q_from_mtx)
+                    #self.handle_control_from_mtx(self,q_from_mtx)
 
-            if not self.for_mtx:
-                q = self.build_q_from_mjc(num_joints)
+                    if not self.for_mtx:
+                        q = self.build_q_from_mjc(num_joints)
 
-                # Set the control signal and step the simulation.
-                self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
-                mujoco.mj_step(self.model, self.data)
+                        # Set the control signal and step the simulation.
+                        self.data.ctrl[self.actuator_ids] = q[self.dof_ids]
+                        mujoco.mj_step(self.model, self.data)
 
-                #viewer.sync() # used for local visualisation
-                time_until_next_step = self.dt - (time.time() - step_start)
-                if time_until_next_step > 0:
-                    await asyncio.sleep(time_until_next_step)
+                        #viewer.sync() # used for local visualisation
+                        time_until_next_step = self.dt - (time.time() - step_start)
+                        if time_until_next_step > 0:
+                            await asyncio.sleep(time_until_next_step)
 
-                # Transform joint postions array to publish via websocket and catch disconnection errors
-                mapped_joint_names = ["Base", "Link1", "Link2", "Link3", "Link4", "Link5", "Link6"]
-                q_string = create_output_string(mapped_joint_names, "", q)
+                        # Transform joint postions array to publish via websocket and catch disconnection errors
+                        mapped_joint_names = ["Base", "Link1", "Link2", "Link3", "Link4", "Link5", "Link6"]
+                        q_string = create_output_string(mapped_joint_names, "", q)
 
-                print(q_string)
-                try:
-                    await self.websocket.send(q_string)
-                    # print(q_string)
+                        print(q_string)
+                        try:
+                            await self.websocket.send(q_string)
+                            # print(q_string)
 
-                except websockets.exceptions.ConnectionClosedOK:
-                    print("Connection closed - OK")
-                    websocket_open = False
-                    await self.websocket.close()
-                    break
+                        except websockets.exceptions.ConnectionClosedOK:
+                            print("Connection closed - OK")
+                            websocket_open = False
+                            await self.websocket.close()
+                            break
 
-                except websockets.exceptions.ConnectionClosedError:
-                    print("Connection closed - Error")
-                    websocket_open = False
-                    await self.websocket.close()
-                    break
+                        except websockets.exceptions.ConnectionClosedError:
+                            print("Connection closed - Error")
+                            websocket_open = False
+                            await self.websocket.close()
+                            break
 
-                except Exception as ex:
-                    websocket_open = False
-                    print(f"{type(ex)} : {ex}")
-                    await self.websocket.close()
-                    break
+                        except Exception as ex:
+                            websocket_open = False
+                            print(f"{type(ex)} : {ex}")
+                            await self.websocket.close()
+                            break
 
-    def handle_control_from_mtx(self,q_from_mtx):
+    async def handle_control_from_mtx(self,q_from_mtx):
+        print('handle')
         print(f"q_from_mtx: {q_from_mtx}")
         #self.data.ctrl[self.actuator_ids] = q_from_mtx[0][self.dof_ids]
         mujoco.mj_step(self.model, self.data)
@@ -259,7 +262,8 @@ class MuJocoSimulation:
         print(q_string)  
         websocket_open = True
         try:
-            self.websocket.send(q_string)
+            await self.websocket.send(q_string)
+            print("sent")
             # print(q_string)
 
         except websockets.exceptions.ConnectionClosedOK:
