@@ -69,7 +69,7 @@
                             <geom type="mesh" mesh="Link4" material="linkgray" class="visual" />
                             <body name="Link5" pos="0 -0.116 0" quat="0 0 -0.7071 0.7071 ">
                                 <inertial pos="0 -0.0045777 -0.0012971" mass="0.7269" diaginertia="0.00073069 0.00071195 0.00071391" />
-                                <joint name="joint5" axis="0 0 1" class="joint_limited" />
+                                <joint name="joint5" axis="0 0 -1" class="joint_limited" />
                                 <geom type="mesh" mesh="Link5" material="linkgray" class="visual" />
                                 <body name="Link6" pos="0 0.105 0" quat="0.7071 -0.7071 0 0">
                                     <inertial pos="0 9.3774e-05 -0.019285" mass="0.15789" diaginertia="7.8045e-05 7.9168e-05 0.00012951" />
