@@ -10,7 +10,7 @@ import threading
 from motion_functions import clifford_attractor, circular_motion
 
 import time
-import motorcortex
+#import motorcortex
 
 def message_received(parameters, simulation):
     # Update the simulation's q_list whenever a new message is received
@@ -95,7 +95,7 @@ class MuJocoSimulation:
         # Define path to robot xml file
             # UR5e - "universal_robots_ur5e/scene.xml"
             # Panda - "franka_emika_panda/scene.xml" 
-        self.robot_path = "/home/amine/Documents/orom/mvp_mujoco_simulation/config/ur5/scene.xml"
+        self.robot_path = "./config/ur5/scene.xml"
         #self.robot_path = "/home/amine/Documents/orom/mvp_mujoco_simulation/config/universal_robots_ur5e/scene.xml"
 
         # Define joint names of the robot. They have to match the names of the urdf-file.
@@ -306,8 +306,8 @@ if __name__ == "__main__":
     simulation = MuJocoSimulation()
 
     # Run MotorCortex in a separate thread
-    motorcortex_thread = threading.Thread(target=run_motorcortex, args=(simulation,))
-    motorcortex_thread.start()
+    # motorcortex_thread = threading.Thread(target=run_motorcortex, args=(simulation,))
+    # motorcortex_thread.start()
 
     # Run the MuJoCo WebSocket server
     asyncio.run(simulation.runServer())

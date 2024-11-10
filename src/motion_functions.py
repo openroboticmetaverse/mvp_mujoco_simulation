@@ -6,8 +6,8 @@ def circular_motion(t: float, radius: float, centerX: float, centerY: float, f: 
             Return the (x, y) coordinates of a circle with radius centered at (centerX, centerY)
             as a function of time t and frequency f.
             """
-            x = radius * np.cos(2 * np.pi * f * t) + centerX
-            y = radius * np.sin(2 * np.pi * f * t) + centerY
+            x = radius * np.cos(2 * np.pi * f * t/2) + centerX/2
+            y = radius * np.sin(2 * np.pi * f * t/2) + centerY/2
             return np.array([x, y])
 
 def clifford_attractor(t: float, a: float, b: float, c: float, d: float) -> np.ndarray:
