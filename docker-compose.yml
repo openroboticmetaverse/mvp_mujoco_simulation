@@ -14,7 +14,7 @@ services:
       - /dev/dri:/dev/dri
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/Dockerfile.simulation-mujoco
     ports:
       - "8081:8081"
     # network_mode: host
@@ -22,3 +22,13 @@ services:
     privileged: false  
     stdin_open: true
     tty: true
+
+
+  test-client:
+    image: test-client
+    container_name: test-client
+    depends_on:
+      - mvp_simulation
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.test-client
