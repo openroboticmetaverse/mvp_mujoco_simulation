@@ -5,21 +5,33 @@ import time
 import asyncio
 import websockets
 import os
+import logging
+import requests
+
 from helpers import create_output_string
 from motion_functions import circular_motion, clifford_attractor
+
+# Configure logging to output to standard output
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 
 class MuJocoSimulation:
     """
     Class for the Mujoco Simulation.
     Currently it is only publishing demo data!
+    # TODO: How to stream data of multiple robots
+    # TODO: Enable users to set parameters -> Save default in DB and make editable
+    # TODO: How to pass error messages to API
+    # TODO: Implement max velocity and max acceleration constraint per joint
     """
-    
+
     def __init__(self):
         # Websocket Settings
-        # self.host = "localhost"
         self.host = "0.0.0.0"
-        self.port = 8081
+        self.port = os.getenv('CONTAINER_PORT')
+        self.user_id = os.getenv('USER_ID')
+        self.scene_id = os.getenv('SCENE_ID')
 
         # Integration timestep in seconds. This corresponds to the amount of time the joint
         # velocities will be integrated for to obtain the desired joint positions. 
@@ -48,10 +60,19 @@ class MuJocoSimulation:
         # Maximum allowable joint velocity in rad/s.
         self.max_angvel = 0.785
 
+        # Get Scene Data from DB
+        try:
+            req = requests.get(url = f"{os.getenv('OROM_BACKEND_URL')}/scene-manager/scenes/{self.scene_id}/")
+            data = req.json()
+            logging.info(data)
+        except Exception as ex:
+            logging.error(ex)
+            
         # Define path to robot xml file
             # UR5e - "universal_robots_ur5e/scene.xml"
-            # Panda - "franka_emika_panda/scene.xml" 
+            # Panda - "franka_emika_panda/scene.xml"
         self.robot_path = "/sim_ws/config/franka_emika_panda/scene.xml"
+
         # Define joint names of the robot. They have to match the names of the urdf-file.
             # UR5e - ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
             # Panda - ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
@@ -64,22 +85,29 @@ class MuJocoSimulation:
         self.name_home_pose = "home"
 
 
-    async def start_server(self):
-        print(f">> Server is running and waiting for the client at {self.host}:{self.port}")
-        self.setupRobotConfigs()
-        async with websockets.serve(self.serverExecutable, self.host, self.port):
-            await asyncio.Future()
+
     def runServer(self):
         """
         Start server.
         Need to be executed using asyncio: asyncio.run(server.runServer())
         """
         assert mujoco.__version__ >= "3.1.0", "Please upgrade to mujoco 3.1.0 or later."
-        try:
-            asyncio.run(self.start_server())
-        except KeyboardInterrupt:
-            print(">> Server was stopped")
- 
+        print(f">> Sim-Server is runnung and waiting for the client at {self.host}:{self.port}")
+
+        # Initialize robot values
+        self.setupRobotConfigs()
+
+        # Code is waiting here until a client connects. Then the function self.serverExecutable is executed.
+        # If the client disconnects the function stops and starts again if a new client connects.
+        start_server = websockets.serve(self.serverExecutable, self.host, self.port)
+        
+        asyncio.get_event_loop().run_until_complete(start_server)
+        asyncio.get_event_loop().run_forever()
+        
+        print(">> Server was stopped")
+
+
+
     def setupRobotConfigs(self):
         """
         Setup robot configurations
@@ -115,7 +143,9 @@ class MuJocoSimulation:
         self.site_quat_conj = np.zeros(4)
         self.error_quat = np.zeros(4)
 
-    async def serverExecutable(self, websocket, path=''):
+        
+
+    async def serverExecutable(self, websocket, path):
         """
         Main behavior function for the server - currently only publishing demo data
         Function is executed when a client connects to the server.
@@ -124,8 +154,8 @@ class MuJocoSimulation:
 
         num_joints = len(self.joint_names)
 
-        # TODO: Implement differentation when visualisation should be opened for debugging and when it 
-        # should run in the backend to save computational power
+        # TODO: Implement differentation when visualisation should be opened for debugging and when it...
+        # TODO: should run in the backend to save computational power
         #simViewer = mujoco.viewer.launch_passive(
         #    model=self.model,
         #    data=self.data,
