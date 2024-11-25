@@ -68,6 +68,7 @@ class MuJocoSimulation:
         except Exception as ex:
             logging.error(ex)
             
+        print("!! > File is onyl changed until here. Further code is in development to be loaded from scene data!!!")
         # Define path to robot xml file
             # UR5e - "universal_robots_ur5e/scene.xml"
             # Panda - "franka_emika_panda/scene.xml"
@@ -86,25 +87,24 @@ class MuJocoSimulation:
 
 
 
+    async def start_server(self):
+        print(f">> Server is running and waiting for the client at {self.host}:{self.port}")
+        self.setupRobotConfigs()
+        async with websockets.serve(self.serverExecutable, self.host, self.port):
+            await asyncio.Future()
+
+
+
     def runServer(self):
         """
         Start server.
         Need to be executed using asyncio: asyncio.run(server.runServer())
         """
         assert mujoco.__version__ >= "3.1.0", "Please upgrade to mujoco 3.1.0 or later."
-        print(f">> Sim-Server is runnung and waiting for the client at {self.host}:{self.port}")
-
-        # Initialize robot values
-        self.setupRobotConfigs()
-
-        # Code is waiting here until a client connects. Then the function self.serverExecutable is executed.
-        # If the client disconnects the function stops and starts again if a new client connects.
-        start_server = websockets.serve(self.serverExecutable, self.host, self.port)
-        
-        asyncio.get_event_loop().run_until_complete(start_server)
-        asyncio.get_event_loop().run_forever()
-        
-        print(">> Server was stopped")
+        try:
+            asyncio.run(self.start_server())
+        except KeyboardInterrupt:
+            print(">> Server was stopped")
 
 
 
