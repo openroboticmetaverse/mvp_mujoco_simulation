@@ -154,8 +154,6 @@ class MuJocoSimulation:
 
         num_joints = len(self.joint_names)
 
-        # TODO: Implement differentation when visualisation should be opened for debugging and when it...
-        # TODO: should run in the backend to save computational power
         #simViewer = mujoco.viewer.launch_passive(
         #    model=self.model,
         #    data=self.data,
