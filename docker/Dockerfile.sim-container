@@ -1,0 +1,17 @@
+FROM python:3.9
+
+SHELL ["/bin/bash", "-c", "-o", "pipefail"]
+
+RUN apt-get update && apt-get upgrade -y
+RUN apt-get install -y x11-apps x11-utils libx11-dev
+
+
+WORKDIR /sim_ws
+
+RUN pip install --upgrade pip
+RUN pip install websockets
+RUN pip install numpy
+RUN pip install mediapy
+RUN pip install tqdm
+RUN pip install mujoco
+RUN pip install requests

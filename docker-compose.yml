@@ -14,7 +14,7 @@ services:
       - /dev/dri:/dev/dri
     build:
       context: .
-      dockerfile: docker/Dockerfile.simulation-mujoco
+      dockerfile: docker/Dockerfile.test-sim
     ports:
       - "8081:8081"
     # network_mode: host
