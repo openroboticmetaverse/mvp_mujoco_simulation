@@ -4,3 +4,4 @@ mediapy
 tqdm
 mujoco
 ffmpeg-python
+requests
