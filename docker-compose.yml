@@ -12,6 +12,9 @@ services:
       - ./config:/sim_ws/config
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /dev/dri:/dev/dri
+      - ./logs:/sim_ws/logs
+      - ./scene:/sim_ws/scene
+
     build:
       context: .
       dockerfile: docker/Dockerfile

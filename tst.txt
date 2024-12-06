@@ -1,0 +1,51 @@
+<compiler angle="radian" meshdir="assets" autolimits="true" />
+
+  <option integrator="implicitfast" />
+
+  <default>
+    <default class="iiwa">
+      <material specular="0.5" shininess="0.25" />
+      <joint axis="0 0 1" />
+      <general gaintype="fixed" biastype="affine" gainprm="2000" biasprm="0 -2000 -200" />
+      <default class="joint1">
+        <joint range="-2.96706 2.96706" />
+        <general ctrlrange="-2.96706 2.96706" />
+        <default class="joint2">
+          <joint range="-2.0944 2.0944" />
+          <general ctrlrange="-2.0944 2.0944" />
+        </default>
+      </default>
+      <default class="joint3">
+        <joint range="-3.05433 3.05433" />
+        <general ctrlrange="-3.05433 3.05433" />
+      </default>
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="gray" />
+      </default>
+      <default class="collision">
+        <geom group="3" />
+      </default>
+      <site size="0.001" rgba="1 0 0 1" group="4" />
+    </default>
+  </default>
+
+  <asset>
+    <material class="iiwa" name="gray" rgba="0.4 0.4 0.4 1" />
+    <material class="iiwa" name="light_gray" rgba="0.6 0.6 0.6 1" />
+    <material class="iiwa" name="black" rgba="0 0 0 1" />
+    <material class="iiwa" name="orange" rgba="1 0.423529 0.0392157 1" />
+
+    <mesh file="link_0.obj" />
+    <mesh file="link_1.obj" />
+    <mesh file="link_2_orange.obj" />
+    <mesh file="link_2_grey.obj" />
+    <mesh file="link_3.obj" />
+    <mesh file="band.obj" />
+    <mesh file="kuka.obj" />
+    <mesh file="link_4_orange.obj" />
+    <mesh file="link_4_grey.obj" />
+    <mesh file="link_5.obj" />
+    <mesh file="link_6_orange.obj" />
+    <mesh file="link_6_grey.obj" />
+    <mesh file="link_7.obj" />
+  </asset>

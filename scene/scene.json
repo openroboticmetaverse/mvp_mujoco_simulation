@@ -1,0 +1,264 @@
+{
+    "scene": {
+      "id": 1,
+      "name": "Test_Scene",
+      "description": "Test Description ABC",
+      "created_at": "2024-10-23T19:21:15.770928Z",
+      "updated_at": "2024-10-23T19:21:15.770944Z"
+    },
+    "robots": [
+      {
+        "id": 1,
+        "robot_reference": {
+          "id": 1,
+          "name": "anymal_b",
+          "file": "https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/anybotics_anymal_b/anymal_b.xml",
+          "file_type": "xml",
+          "description": "",
+          "created_at": "2024-10-12T18:49:12.381582Z",
+          "updated_at": "2024-10-12T18:49:12.381599Z",
+          "num_joints": 6
+        },
+        "name": "Robot Instance 1",
+        "description": "",
+        "position": [
+          2,
+          2,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "created_at": "2024-10-31T20:01:45.368164Z",
+        "updated_at": "2024-10-31T20:01:45.368176Z",
+        "joint_angles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_id": 1
+      },
+      {
+        "id": 2,
+        "robot_reference": {
+          "id": 1,
+          "name": "anymal_b",
+          "file": "https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/anybotics_anymal_b/anymal_b.xml",
+          "file_type": "xml",
+          "description": "",
+          "created_at": "2024-10-12T18:49:12.381582Z",
+          "updated_at": "2024-10-12T18:49:12.381599Z",
+          "num_joints": 6
+        },
+        "name": "Robot Instance 2",
+        "description": "",
+        "position": [
+          4,
+          0,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "created_at": "2024-10-31T20:01:45.368164Z",
+        "updated_at": "2024-10-31T20:01:45.368176Z",
+        "joint_angles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_id": 1
+      },
+      {
+        "id": 3,
+        "robot_reference": {
+          "id": 2,
+          "name": "iiwa",
+          "file": "https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/kuka_iiwa_14/iiwa14.xml",
+          "file_type": "xml",
+          "description": "",
+          "created_at": "2024-10-12T18:49:12.381582Z",
+          "updated_at": "2024-10-12T18:49:12.381599Z",
+          "num_joints": 6
+        },
+        "name": "Robot Instance 3",
+        "description": "",
+        "position": [
+          10,
+          0,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "created_at": "2024-10-31T20:01:45.368164Z",
+        "updated_at": "2024-10-31T20:01:45.368176Z",
+        "joint_angles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_id": 1
+      },
+      {
+        "id": 4,
+        "robot_reference": {
+          "id": 2,
+          "name": "iiwa",
+          "file": "https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/kuka_iiwa_14/iiwa14.xml",
+          "file_type": "xml",
+          "description": "",
+          "created_at": "2024-10-12T18:49:12.381582Z",
+          "updated_at": "2024-10-12T18:49:12.381599Z",
+          "num_joints": 6
+        },
+        "name": "Robot Instance 4",
+        "description": "",
+        "position": [
+        -1.0,
+        -1.0,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "created_at": "2024-10-31T20:01:45.368164Z",
+        "updated_at": "2024-10-31T20:01:45.368176Z",
+        "joint_angles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_id": 1
+      },
+      {
+        "id": 5,
+        "robot_reference": {
+          "id": 3,
+          "name": "fr3",
+          "file": "https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/franka_fr3/fr3.xml",
+          "file_type": "xml",
+          "description": "",
+          "created_at": "2024-10-12T18:49:12.381582Z",
+          "updated_at": "2024-10-12T18:49:12.381599Z",
+          "num_joints": 6
+        },
+        "name": "Robot Instance 5",
+        "description": "",
+        "position": [
+          0,
+          0.0,
+          0.0
+        ],
+        "orientation": [
+          5.0,
+          5.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "created_at": "2024-10-31T20:01:45.368164Z",
+        "updated_at": "2024-10-31T20:01:45.368176Z",
+        "joint_angles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_id": 1
+      }
+    ],
+    "objects": [
+      {
+        "id": 1,
+        "object_reference": {
+          "id": 2,
+          "name": "Test_Mug",
+          "file": "/media/object_files/panda.xml",
+          "file_type": "xml",
+          "description": "Mug for testing - ignore the file name",
+          "created_at": "2024-11-21T00:19:42.809244Z",
+          "updated_at": "2024-11-21T00:19:42.809261Z"
+        },
+        "name": "Test_Mug_2",
+        "description": "Testing",
+        "position": [
+          1.0,
+          2.0,
+          3.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "created_at": "2024-11-21T00:24:17.154825Z",
+        "updated_at": "2024-11-21T00:24:17.154838Z",
+        "color": null,
+        "scene_id": 1
+      }
+    ]
+  }
