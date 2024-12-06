@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import time
 import numpy as np
 import requests
-
-response = requests.get('https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/anybotics_anymal_b/anymal_b.xml')
-print(response)
+qpos="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.785398 0 -1.5708 0 0 0 0 0.785398 0 -1.5708 0 0 0 0 0 0 -1.57079 0 1.57079 -0.7853" 
+ctrl="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.785398 0 -1.5708 0 0 0 0 0.785398 0 -1.5708 0 0 0 0 0 0 -1.57079 0 1.57079 -0.7853"
+print(len(qpos.split(" ")))
+print(len(ctrl.split(" ")))

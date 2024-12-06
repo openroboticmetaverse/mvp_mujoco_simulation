@@ -8,100 +8,6 @@
     },
     "robots": [
       {
-        "id": 1,
-        "robot_reference": {
-          "id": 1,
-          "name": "anymal_b",
-          "file": "https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/anybotics_anymal_b/anymal_b.xml",
-          "file_type": "xml",
-          "description": "",
-          "created_at": "2024-10-12T18:49:12.381582Z",
-          "updated_at": "2024-10-12T18:49:12.381599Z",
-          "num_joints": 6
-        },
-        "name": "Robot Instance 1",
-        "description": "",
-        "position": [
-          2,
-          2,
-          0.0
-        ],
-        "orientation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ],
-        "created_at": "2024-10-31T20:01:45.368164Z",
-        "updated_at": "2024-10-31T20:01:45.368176Z",
-        "joint_angles": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_id": 1
-      },
-      {
-        "id": 2,
-        "robot_reference": {
-          "id": 1,
-          "name": "anymal_b",
-          "file": "https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/anybotics_anymal_b/anymal_b.xml",
-          "file_type": "xml",
-          "description": "",
-          "created_at": "2024-10-12T18:49:12.381582Z",
-          "updated_at": "2024-10-12T18:49:12.381599Z",
-          "num_joints": 6
-        },
-        "name": "Robot Instance 2",
-        "description": "",
-        "position": [
-          4,
-          0,
-          0.0
-        ],
-        "orientation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ],
-        "created_at": "2024-10-31T20:01:45.368164Z",
-        "updated_at": "2024-10-31T20:01:45.368176Z",
-        "joint_angles": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_id": 1
-      },
-      {
         "id": 3,
         "robot_reference": {
           "id": 2,
@@ -116,8 +22,8 @@
         "name": "Robot Instance 3",
         "description": "",
         "position": [
-          10,
-          0,
+          2,
+          2,
           0.0
         ],
         "orientation": [
@@ -157,8 +63,8 @@
         "name": "Robot Instance 4",
         "description": "",
         "position": [
-        -1.0,
-        -1.0,
+        -2.0,
+        -2.0,
           0.0
         ],
         "orientation": [
@@ -198,13 +104,55 @@
         "name": "Robot Instance 5",
         "description": "",
         "position": [
-          0,
-          0.0,
+          -2,
+          2.0,
           0.0
         ],
         "orientation": [
           5.0,
           5.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "created_at": "2024-10-31T20:01:45.368164Z",
+        "updated_at": "2024-10-31T20:01:45.368176Z",
+        "joint_angles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_id": 1
+      },
+      {
+        "id": 6,
+        "robot_reference": {
+          "id": 3,
+          "name": "panda",
+          "file": "https://github.com/openroboticmetaverse/robot-description/blob/main/mujoco/franka_emika_panda/panda.xml",
+          "file_type": "xml",
+          "description": "",
+          "created_at": "2024-10-12T18:49:12.381582Z",
+          "updated_at": "2024-10-12T18:49:12.381599Z",
+          "num_joints": 6
+        },
+        "name": "Robot Instance 5",
+        "description": "",
+        "position": [
+          2,
+          -2.0,
+          0.0
+        ],
+        "orientation": [
+          -2.0,
+          -2.0,
           0.0
         ],
         "scale": [

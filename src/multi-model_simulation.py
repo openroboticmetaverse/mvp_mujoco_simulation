@@ -135,12 +135,32 @@ class MuJocoSimulation:
     
     def create_new_scene(self, scene_id=1):
         """
-        This function creates an xml file containing all the models that are present in the scene_id.  
-        The new xml file is stored in scene/combined_models.xml.
+        Creates an XML file containing all the models present in the specified scene.
+
+        This function performs the following steps:
+        1. Imports models based on the given scene_id.
+        2. Creates a new XML structure for the combined scene.
+        3. Processes each robot in the scene, extracting and modifying relevant XML sections.
+        4. Combines all processed sections into a single XML file.
+
+        The function handles various XML sections including compiler, option, asset, default,
+        worldbody, contact, actuator, keyframe, and tendon. It ensures that robot-specific
+        elements are properly named and positioned within the combined scene.
+
+        Args:
+            scene_id (int): The ID of the scene to create. Defaults to 1.
+
+        The resulting XML file is stored at 'scene/combined_models.xml'.
+
+        Note:
+        - This function relies on several helper methods like parse_section and copy_elements.
+        - It handles robot-specific modifications and ensures uniqueness of elements across different robots.
+        - Special handling is implemented for sections like keyframe, where data from multiple robots needs to be combined.
         """
+
         # import models
         self.import_models(scene_id)
-
+        self.base_names = []
         # create combined_models.xml
         combined_model = ET.Element("mujoco")
 
@@ -283,9 +303,60 @@ class MuJocoSimulation:
                             ctrl_list = ctrl.split(" ")
                             ctrl_list = tags[tag]['section'].find('key').get('ctrl').split(" ") + ctrl_list
                             tags[tag]['section'].find('key').set('ctrl', ' '.join(ctrl_list))
-                
+
+                    else:
+                        # Count the number of joints (excluding the free joint for the base)
+                        joint_count = len(robot_root.findall('.//joint'))
+
+                        # Count the number of actuators
+                        actuator_count = len(robot_root.findall('.//actuator/position'))
+
+                        # Calculate qpos size (7 for base + number of joints)
+                        qpos_size = 10 + joint_count
+                        
+                        # Adjust qpos size
+                        qpos_list = tags[tag]['section'].find('key').get('ctrl').split(" ") + ['0'] * qpos_size
+                        tags[tag]['section'].find('key').set('qpos', ' '.join(qpos_list))
+
+                        # Calculate ctrl size (equal to the number of actuators)
+                        ctrl_size = actuator_count
+
+                        # adjust ctrl size
+                        ctrl_list = tags[tag]['section'].find('key').get('ctrl').split(" ") + ['0'] * ctrl_size
+                        tags[tag]['section'].find('key').set('ctrl', ' '.join(ctrl_list))
+
+                elif tag == 'tendon':
+                    # check if section exists
+                    if not tags[tag]['exists']:
+                        tags[tag]['exists'] = True
+                        tags[tag]['section'] = ET.SubElement(combined_model, tag)
+
+                    # extract robot tendon section
+                    tendon_section = robot_root.find("tendon")
+
+                    # parse tendon section
+                    self.parse_section(tendon_section, tag, robot_name, id=robot["id"])
+
+                    # copy tendon section to combined model
+                    self.copy_elements(tendon_section, tags[tag]['section'])
+
+                elif tag == 'equality':
+                    # check if section exists
+                    if not tags[tag]['exists']:
+                        tags[tag]['exists'] = True
+                        tags[tag]['section'] = ET.SubElement(combined_model, tag)
+
+                    # extract robot equality section
+                    equality_section = robot_root.find("equality")
+
+                    # parse equality section
+                    self.parse_section(equality_section, tag, robot_name, id=robot["id"])
+
+                    # copy equality section to combined model
+                    self.copy_elements(equality_section, tags[tag]['section'])
+                                       
             existing_robots[robot_name] = True
-        
+                                
         # save combined models in a new XML
         tree = ET.ElementTree(combined_model)
         tree.write(self.combined_model_path, encoding="utf-8", xml_declaration=True)
@@ -315,7 +386,13 @@ class MuJocoSimulation:
         if tag == 'asset':
             for element in section:
                 # adjust element name
-                if element.get('name') is not None and robot_name not in element.get('name'):
+                if element.get('name') is None:
+                    file_path = element.get('file')
+                    if file_path:
+                        file_name = os.path.basename(file_path)
+                        name_without_extension = os.path.splitext(file_name)[0]
+                        element.set('name', f"{name_without_extension}_{robot_name}")
+                elif element.get('name') is not None and robot_name not in element.get('name'):
                     element.set('name', f"{element.get('name')}_{robot_name}")
 
                 # adjust class names
@@ -324,8 +401,8 @@ class MuJocoSimulation:
 
                 # adjust texture paths
                 if element.get('texture') is not None:
-                    texture_file = element.get('texture')
-                    element.set('texture', f"assets_{robot_name}/{texture_file}")
+                    texture_name = element.get('texture')
+                    element.set('texture', f"{texture_name}_{robot_name}")
 
                 # adjust mesh paths
                 if element.get('file') is not None:
@@ -352,9 +429,14 @@ class MuJocoSimulation:
 
         elif tag == 'worldbody':
             for element in section:
+                if element.tag == 'light':
+                    continue
                 # adjust element name
-                if element.get('name') is not None and robot_name not in element.get('name'):
-                    element.set('name', f"{element.get('name')}_{robot_name}_{id}")
+                if element.get('name') is not None:
+                    if element.get('name') not in robot_name:
+                        element.set('name', f"{element.get('name')}_{robot_name}_{id}")
+                    else:
+                        element.set('name', f"{element.get('name')}_{id}")
 
                 # adjust class names
                 if element.get('class') is not None and robot_name not in element.get('class'):
@@ -372,12 +454,22 @@ class MuJocoSimulation:
                 if element.get('material') is not None and robot_name not in element.get('material'):
                     element.set('material', f"{element.get('material')}_{robot_name}")
 
+                # adjust mesh names
+                if element.get('mesh') is not None:
+                    mesh_file = element.get('mesh')
+                    element.set('mesh', f"{mesh_file}_{robot_name}")
+
                 # adjust position
                 if upper_level:
                     if element.get('pos') is not None:
                         base_pos = element.get('pos').split(" ")
-                        pos = [str(float(p) + float(base_pos[i])) for i, p in enumerate(pos)]
-                        element.set('pos', " ".join(pos))
+                        curr_pos = [str(float(p) + float(base_pos[i])) for i, p in enumerate(pos)]
+                    else:
+                        curr_pos = [str(p) for p in pos]
+                    element.set('pos', " ".join(curr_pos))
+
+                    # append base names
+                    self.base_names.append(element.get('name'))
 
             # recursively parse subsections
             subsections = section.findall('body')
@@ -394,24 +486,65 @@ class MuJocoSimulation:
 
         elif tag == 'actuator':
             for element in section:
+                # Remove the 'gainprm' attribute if it exists
+                if element.tag == 'general':
+                    if 'gainprm' in element.attrib:
+                        del element.attrib['gainprm']
+
+                    if 'biasprm' in element.attrib:
+                        del element.attrib['biasprm']
+                    
+                    # Convert to 'position' actuator if conditions are met
+                    if element.get('tendon') is None:
+                        element.tag = 'position'
+
+                    # adjust tendon names
+                    if element.get('tendon') is not None:
+                        tendon_name = element.get('tendon')
+                        element.set('tendon', f"{tendon_name}_{robot_name}_{id}")
+
                 # adjust class names
-                if robot_name not in element.get('class'):
+                if element.get('class') is not None and robot_name not in element.get('class'):
                     element.set('class', f"{element.get('class')}_{robot_name}")
 
                 # adjust joint names
-                element.set('joint', f"{element.get('joint')}_{robot_name}_{id}")
+                if element.get('joint') is not None:
+                    element.set('joint', f"{element.get('joint')}_{robot_name}_{id}")
 
                 # adjust names
-                element.set('name', f"{element.get('name')}_{robot_name}_{id}")
+                if element.get('name') is not None:
+                    if element.get('name') not in robot_name:
+                        element.set('name', f"{element.get('name')}_{robot_name}_{id}")
+                    else:
+                        element.set('name', f"{element.get('name')}_{id}")
+
+        elif tag == 'tendon':
+            section.find('fixed').set('name', f"{section.find('fixed').get('name')}_{robot_name}_{id}")
+            for element in section.findall('.//joint'):
+                if element.get('joint') is not None:
+                    element.set('joint', f"{element.get('joint')}_{robot_name}_{id}")
+
+        elif tag == 'equality':
+            for element in section:
+                element.set('joint1', f"{element.get('joint1')}_{robot_name}_{id}")
+                element.set('joint2', f"{element.get('joint2')}_{robot_name}_{id}")
+
 
     def copy_elements(self, source_element, target_element, exclude_tags=None, pos=None):
         """
-        Copy the element of a source xml file into the element of a target xml file.
+        Copy elements from a source XML element to a target XML element.
+
+        This function iterates through the child elements of the source element
+        and appends them to the target element, excluding specified tags.
 
         Parameters:
-        source_element: source element to be copied
-        target_element: element in which source elements are copied
-        exclude_tags: tags that do not need to be copied
+        source_element (xml.etree.ElementTree.Element): The source XML element from which to copy.
+        target_element (xml.etree.ElementTree.Element): The target XML element to which elements are copied.
+        exclude_tags (list, optional): A list of tag names to exclude from copying. Defaults to None.
+        pos (list, optional): Unused parameter. Defaults to None.
+
+        Returns:
+        None
         """
         if exclude_tags is None:
             exclude_tags = []
@@ -552,27 +685,33 @@ class MuJocoSimulation:
         self.model = mujoco.MjModel.from_xml_path(self.scene_path)
         self.data = mujoco.MjData(self.model)
 
+        # Set the integrator to semi-implicit Euler
+        # self.model.opt.integrator = mujoco.mjtIntegrator.mjINT_EULER
+
+
+        # Alternatively, for even more stability (but slower simulation), use RK4:
+        # self.model.opt.integrator = mujoco.mjtIntegrator.mjINT_RK4
+
         self.model.body_gravcomp[:] = float(self.gravity_compensation)
         self.model.opt.timestep = self.dt
 
+
+
         # End-effector site we wish to control.
-        if True:
-            site_name = [""]
-        elif num_robots > 1:
-            site_name = "attachment_site_copy_0"
-        else:
-            site_name = "attachment_site"
-        self.site_id = None#self.model.site(site_name).id
-        self.key_id = None#self.model.key(self.name_home_pose).id
+        tree = ET.parse(self.combined_model_path)
+        root = tree.getroot()
+        sites = [element.get('name') for element in root.findall('.//site') if element.get('name')]
+
+        # self.site_id = self.model.site(site_name).id
+        # self.key_id = self.model.key(self.name_home_pose).id
         return  
 
-    def runSimulation(self, save_simulation_data=False):
+    def runSimulation(self):
         """
-        Run the simulation and visualize it locally.
+        Run the simulation and visualize it locally, with slower, more controlled robot movements.
         """
         self.setupRobotConfigs()
-        if save_simulation_data:
-            simulation_data = []
+    
         # Launch the viewer.
         simViewer = mujoco.viewer.launch_passive(
             model=self.model,
@@ -580,19 +719,65 @@ class MuJocoSimulation:
             show_left_ui=False,
             show_right_ui=False,
         )
+    
+        # Reduce the maximum joint velocity for slower movements
+        max_joint_vel = 0.1  # radians per second
+    
+        # Increase the number of sub-steps for smoother motion
+        n_substeps = 20
+        substep_time = self.dt / n_substeps
+    
+        # Identify actuators for each robot
+        tree = ET.parse(self.combined_model_path)
+        root = tree.getroot()
+        robot_actuators = []
+        for robot in self.robots:
+            actuator_names = [element.get('name') for element in root.findall('./actuator/position') if element.get('name').endswith(str(robot['id']))]
+            robot_actuators.append([self.model.actuator(name).id for name in actuator_names])
+        
+        # Initialize target positions for each robot
+        target_positions = [self.data.ctrl[actuators].copy() for actuators in robot_actuators]
+    
         with simViewer as viewer:
-            # Reset the simulation.
-            #mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
-            
-            # Reset the free camera.
+            mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
             mujoco.mjv_defaultFreeCamera(self.model, viewer.cam)
-            # Enable site frame visualization.
             viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
+    
             while viewer.is_running():
                 step_start = time.time()
-                continue
-                
     
+                # Update target positions less frequently
+                if np.random.random() < 0.02:  # 2% chance to change target each frame
+                    for i, actuators in enumerate(robot_actuators):
+                        target_positions[i] = self.data.ctrl[actuators] + np.random.uniform(-0.1, 0.1, len(actuators))
+    
+                # Move each robot towards its target position
+                for i, actuators in enumerate(robot_actuators):
+                    current_pos = self.data.ctrl[actuators]
+                    target_pos = target_positions[i]
+                    
+                    # Calculate the direction to move
+                    direction = target_pos - current_pos
+                    
+                    # Limit the movement speed
+                    movement = np.clip(direction, -max_joint_vel * self.dt, max_joint_vel * self.dt)
+                    
+                    # Update the control signals
+                    self.data.ctrl[actuators] += movement
+    
+                # Step the simulation with sub-steps
+                for _ in range(n_substeps):
+                    mujoco.mj_step(self.model, self.data)
+    
+                # Update the viewer
+                viewer.sync()
+    
+                # Control the simulation speed
+                time_until_next_step = self.dt - (time.time() - step_start)
+                if time_until_next_step > 0:
+                    time.sleep(time_until_next_step)
+    
+        
 if __name__ == "__main__":
     simulation = MuJocoSimulation()
-    # simulation.runSimulation()
+    simulation.runSimulation()
