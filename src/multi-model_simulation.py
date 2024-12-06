@@ -780,4 +780,4 @@ class MuJocoSimulation:
         
 if __name__ == "__main__":
     simulation = MuJocoSimulation()
-    simulation.runSimulation()
+    simulation.clean_scene_folder()
